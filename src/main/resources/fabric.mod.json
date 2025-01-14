@@ -1,0 +1,30 @@
+{
+	"schemaVersion": 1,
+	"id": "${modId}",
+	"version": "${modVersion}",
+	"name": "${modName}",
+	"description": "A client-side mod that adds an interface for uncompleted advancements, with detailed criteria and a built-in completion tracker.",
+	"authors": [
+		"${author}"
+	],
+	"contact": {
+		"sources": "${repoUrl}"
+	},
+	"license": "MIT",
+	"icon": "assets/advancementsexplorer/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.diskree.advancementsexplorer.AdvancementsExplorerMod"
+		]
+	},
+	"mixins": [
+		"advancementsexplorer.mixins.json"
+	],
+	"depends": {
+		"java": ">=${minJavaVersion}",
+		"minecraft": ">=${minMinecraftVersion}",
+		"fabricloader": ">=${minLoaderVersion}"
+	},
+	"accessWidener": "advancementsexplorer.accesswidener"
+}
