@@ -1,9 +1,7 @@
 package com.diskree.advancementsexplorer.injection.mixin;
 
-import com.diskree.advancementsexplorer.AdvancementsExplorerMod;
 import com.diskree.advancementsexplorer.injection.extension.AdvancementsScreenExtension;
 import com.llamalad7.mixinextras.sugar.Local;
-import net.minecraft.advancement.AdvancementEntry;
 import net.minecraft.advancement.PlacedAdvancement;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.advancement.AdvancementTab;
@@ -53,15 +51,7 @@ public class AdvancementTabMixin {
         if (screen instanceof AdvancementsScreenExtension advancementsScreenExtension &&
             !root.getAdvancementEntry().id().equals(ADVANCEMENTS_SEARCH_TAB_ROOT_ADVANCEMENT_ID)
         ) {
-            AdvancementEntry advancementEntry = advancementWidget.advancement.getAdvancementEntry();
-            if (AdvancementsExplorerMod.isClickableAdvancement(advancementEntry)) {
-                advancementsScreenExtension.advancementsexplorer$setFocusedAdvancement(
-                    advancementEntry.id(),
-                    advancementWidget
-                );
-            } else {
-                advancementsScreenExtension.advancementsexplorer$setFocusedAdvancement(null, null);
-            }
+            advancementsScreenExtension.advancementsexplorer$setFocusedAdvancement(advancementWidget);
         }
     }
 
@@ -85,7 +75,7 @@ public class AdvancementTabMixin {
         if (!shouldShowTooltip && screen instanceof AdvancementsScreenExtension advancementsScreenExtension &&
             !root.getAdvancementEntry().id().equals(ADVANCEMENTS_SEARCH_TAB_ROOT_ADVANCEMENT_ID)
         ) {
-            advancementsScreenExtension.advancementsexplorer$setFocusedAdvancement(null, null);
+            advancementsScreenExtension.advancementsexplorer$setFocusedAdvancement(null);
         }
     }
 }

@@ -43,12 +43,6 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
     private int tooltipHeight;
 
     @Unique
-    private int tooltipX = Integer.MAX_VALUE;
-
-    @Unique
-    private int tooltipY = Integer.MAX_VALUE;
-
-    @Unique
     private float horizontallySwapAnimationProgress;
 
     @Unique
@@ -77,16 +71,6 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
     @Override
     public int advancementsexplorer$getTooltipHeight() {
         return tooltipHeight;
-    }
-
-    @Override
-    public int advancementsexplorer$getTooltipX() {
-        return tooltipX;
-    }
-
-    @Override
-    public int advancementsexplorer$getTooltipY() {
-        return tooltipY;
     }
 
     @Override
@@ -184,69 +168,6 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
         }
     }
 
-    @Inject(
-        method = "drawTooltip",
-        at = @At(value = "HEAD")
-    )
-    public void startTooltipCoordinatesTracking(
-        DrawContext context,
-        int originX,
-        int originY,
-        float alpha,
-        int x,
-        int y,
-        CallbackInfo ci
-    ) {
-        tooltipX = tooltipY = Integer.MAX_VALUE;
-    }
-
-    @WrapOperation(
-        method = "drawTooltip",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/DrawContext;drawGuiTexture(Ljava/util/function/Function;Lnet/minecraft/util/Identifier;IIII)V",
-            ordinal = 0
-        )
-    )
-    public void wrapDescriptionBackgroundTopRender(
-        DrawContext context,
-        Function<Identifier, RenderLayer> renderLayers,
-        Identifier sprite,
-        int x,
-        int y,
-        int width,
-        int height,
-        @NotNull Operation<Void> original,
-        @Local(argsOnly = true, ordinal = 0) int originX
-    ) {
-        tooltipX = Math.min(tooltipX, x);
-        tooltipY = Math.min(tooltipY, y);
-        original.call(context, renderLayers, sprite, x, y, width, height);
-    }
-
-    @WrapOperation(
-        method = "drawTooltip",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/DrawContext;drawGuiTexture(Ljava/util/function/Function;Lnet/minecraft/util/Identifier;IIII)V",
-            ordinal = 1
-        )
-    )
-    public void wrapDescriptionBackgroundBottomRender(
-        DrawContext context,
-        Function<Identifier, RenderLayer> renderLayers,
-        Identifier sprite,
-        int x,
-        int y,
-        int width,
-        int height,
-        @NotNull Operation<Void> original
-    ) {
-        tooltipX = Math.min(tooltipX, x);
-        tooltipY = Math.min(tooltipY, y);
-        original.call(context, renderLayers, sprite, x, y, width, height);
-    }
-
     @WrapOperation(
         method = "drawTooltip",
         at = @At(
@@ -267,8 +188,6 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
         @Local(argsOnly = true, ordinal = 0) int originX,
         @Local(argsOnly = true, ordinal = 1) int originY
     ) {
-        tooltipX = Math.min(tooltipX, x);
-        tooltipY = Math.min(tooltipY, y);
         if (verticallySwapAnimationProgress != 0.0f) {
             y = MathHelper.lerp(
                 verticallySwapAnimationProgress,
@@ -279,6 +198,43 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
             context.getMatrices().translate(0, 0, 400);
         }
         original.call(context, renderLayers, sprite, x, y, width, height);
+        if (verticallySwapAnimationProgress != 0.0f) {
+            context.getMatrices().pop();
+        }
+    }
+
+    @WrapOperation(
+        method = "drawTooltip",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/DrawContext;drawGuiTexture(Ljava/util/function/Function;Lnet/minecraft/util/Identifier;IIIIIIII)V"
+        )
+    )
+    public void wrapProgressBarPartsRender(
+        DrawContext context,
+        Function<Identifier, RenderLayer> renderLayers,
+        Identifier sprite,
+        int textureWidth,
+        int textureHeight,
+        int u,
+        int v,
+        int x,
+        int y,
+        int width,
+        int height,
+        @NotNull Operation<Void> original,
+        @Local(argsOnly = true, ordinal = 1) int originY
+    ) {
+        if (verticallySwapAnimationProgress != 0.0f) {
+            y = MathHelper.lerp(
+                verticallySwapAnimationProgress,
+                originY + this.y + this.tooltipHeight - 26 + 3,
+                y
+            );
+            context.getMatrices().push();
+            context.getMatrices().translate(0, 0, 400);
+        }
+        original.call(context, renderLayers, sprite, textureWidth, textureHeight, u, v, x, y, width, height);
         if (verticallySwapAnimationProgress != 0.0f) {
             context.getMatrices().pop();
         }
@@ -329,50 +285,6 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
         original.call(context, renderLayers, sprite, x, y, width, height);
         if (shouldBringToFront) {
             context.getMatrices().pop();
-        }
-    }
-
-    @WrapOperation(
-        method = "drawTooltip",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/DrawContext;drawGuiTexture(Ljava/util/function/Function;Lnet/minecraft/util/Identifier;IIIIIIII)V"
-        )
-    )
-    public void wrapProgressPartsRender(
-        DrawContext instance,
-        Function<Identifier, RenderLayer> renderLayers,
-        Identifier sprite,
-        int textureWidth,
-        int textureHeight,
-        int u,
-        int v,
-        int x,
-        int y,
-        int width,
-        int height,
-        @NotNull Operation<Void> original
-    ) {
-        tooltipX = Math.min(tooltipX, x);
-        tooltipY = Math.min(tooltipY, y);
-        original.call(instance, renderLayers, sprite, textureWidth, textureHeight, u, v, x, y, width, height);
-    }
-
-    @Inject(
-        method = "drawTooltip",
-        at = @At(value = "TAIL")
-    )
-    public void stopTooltipCoordinatesTracking(
-        DrawContext context,
-        int originX,
-        int originY,
-        float alpha,
-        int x,
-        int y,
-        CallbackInfo ci
-    ) {
-        if (!isTooltipMirroredVertically) {
-            tooltipY += Constants.ADVANCEMENT_FRAME_OVERHANG;
         }
     }
 

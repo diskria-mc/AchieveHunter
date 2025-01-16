@@ -11,10 +11,6 @@ public interface AdvancementWidgetExtension {
 
     int advancementsexplorer$getTooltipHeight();
 
-    int advancementsexplorer$getTooltipX();
-
-    int advancementsexplorer$getTooltipY();
-
     void advancementsexplorer$setX(int x);
 
     void advancementsexplorer$setY(int y);
