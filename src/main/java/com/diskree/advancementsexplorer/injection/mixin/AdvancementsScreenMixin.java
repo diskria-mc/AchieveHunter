@@ -39,7 +39,7 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
     private static final double DRAG_THRESHOLD = 5.0d;
 
     @Unique
-    private static final float ANIMATION_DURATION_SECONDS = 0.8f;
+    private static final float ANIMATION_DURATION_SECONDS = 0.5f;
 
     @Unique
     private static final int WINDOW_BORDER_SIZE = 9;
@@ -48,7 +48,14 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
     private static final int WINDOW_HEADER_HEIGHT = 18;
 
     @Unique
-    private AdvancementsScreenState viewState = AdvancementsScreenState.WINDOW_VISIBLE;
+    private static final List<AdvancementFrame> FRAME_TYPE_PRIORITY = Arrays.asList(
+        AdvancementFrame.TASK,
+        AdvancementFrame.GOAL,
+        AdvancementFrame.CHALLENGE
+    );
+
+    @Unique
+    private AdvancementsScreenState screenState = AdvancementsScreenState.WINDOW_VISIBLE;
 
     @Unique
     private int windowTreeX;
@@ -81,16 +88,10 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
     private AdvancementWidget transitionAdvancementWidget;
 
     @Unique
-    private int widgetTransitionX;
+    private int tooltipTransitionStartX;
 
     @Unique
-    private int widgetTransitionY;
-
-    @Unique
-    private boolean shouldHorizontallySwapTransitionTooltip;
-
-    @Unique
-    private boolean shouldVerticallySwapTransitionTooltip;
+    private int tooltipTransitionStartY;
 
     @Unique
     private int tooltipTransitionEndX;
@@ -99,62 +100,116 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
     private int tooltipTransitionEndY;
 
     @Unique
+    private boolean shouldHorizontallySwapTransitionTooltip;
+
+    @Unique
+    private boolean shouldVerticallySwapTransitionTooltip;
+
+    @Unique
     private float tooltipTransitionProgress;
 
     @Unique
-    private List<PlacedAdvancement> carouselAdvancements;
+    private List<PlacedAdvancement> advancementsList;
 
     @Unique
-    private final Map<PlacedAdvancement, AdvancementWidget> carouselWidgets = new HashMap<>();
+    private final Map<PlacedAdvancement, AdvancementWidget> advancementWidgetsCache = new HashMap<>();
 
     @Unique
-    private int carouselCenterIndex = -1;
+    private int currentAdvancementIndex = -1;
 
     protected AdvancementsScreenMixin(Text title) {
         super(title);
     }
 
     @Unique
-    private void startTransitionToCarousel() {
+    private void openInfo() {
         if (focusedAdvancementWidget == null) {
             return;
         }
-        carouselCenterIndex = getCarouselAdvancements().indexOf(focusedPlacedAdvancement);
-        if (carouselCenterIndex == -1) {
+        currentAdvancementIndex = getAdvancementsList().indexOf(focusedPlacedAdvancement);
+        if (currentAdvancementIndex == -1) {
             return;
         }
-        viewState = AdvancementsScreenState.TRANSITION_TO_CAROUSEL;
+        screenState = AdvancementsScreenState.OPENING_INFO;
         tooltipTransitionProgress = 0.0f;
     }
 
     @Unique
-    private void startTransitionToWindow() {
-        viewState = AdvancementsScreenState.TRANSITION_TO_WINDOW;
-        tooltipTransitionProgress = 0.0f;
-    }
-
-    @Unique
-    private @NotNull List<PlacedAdvancement> getCarouselAdvancements() {
-        if (carouselAdvancements == null) {
-            carouselAdvancements = new ArrayList<>();
+    private @NotNull List<PlacedAdvancement> getAdvancementsList() {
+        if (advancementsList == null) {
+            advancementsList = new ArrayList<>();
             for (PlacedAdvancement advancement : new ArrayList<>(advancementHandler.getManager().getAdvancements())) {
-                if (isCarouselAdvancement(advancement)) {
-                    carouselAdvancements.add(advancement);
+                if (shouldIncludeAdvancement(advancement)) {
+                    advancementsList.add(advancement);
                 }
             }
-            carouselAdvancements.sort(
-                Comparator.comparing((PlacedAdvancement advancement) -> {
-                        AdvancementProgress progress = advancementHandler.advancementProgresses.get(advancement.getAdvancementEntry());
-                        return progress.isDone() ? Float.MAX_VALUE : 1.0f - progress.getProgressBarPercentage();
-                    })
-                    .thenComparing(advancement -> advancement.getAdvancementEntry().id().toString())
-            );
+            Map<AdvancementEntry, AdvancementProgress> progresses = advancementHandler.advancementProgresses;
+            advancementsList.sort((advancement, otherAdvancement) -> {
+                AdvancementProgress progress = progresses.get(advancement.getAdvancementEntry());
+                AdvancementProgress otherProgress = progresses.get(otherAdvancement.getAdvancementEntry());
+                int totalRequirementsCount = progress.requirements.getLength();
+                int otherTotalRequirementsCount = otherProgress.requirements.getLength();
+                int obtainedAdvancementsCount = progress.countObtainedRequirements();
+                int otherObtainedAdvancementsCount = otherProgress.countObtainedRequirements();
+                boolean isDone = progress.isDone();
+                boolean otherIsDone = otherProgress.isDone();
+                boolean isAnyObtained = progress.isAnyObtained();
+                boolean otherIsAnyObtained = otherProgress.isAnyObtained();
+                boolean isStarted = isAnyObtained && !isDone;
+                boolean otherIsStarted = otherIsAnyObtained && !otherIsDone;
+
+                if (isStarted && otherIsStarted) {
+                    int remainingRequirementsCountComparison = Integer.compare(
+                        totalRequirementsCount - obtainedAdvancementsCount,
+                        otherTotalRequirementsCount - otherObtainedAdvancementsCount
+                    );
+                    if (remainingRequirementsCountComparison != 0) {
+                        return remainingRequirementsCountComparison;
+                    }
+                }
+                if (isStarted) {
+                    return -1;
+                }
+                if (otherIsStarted) {
+                    return 1;
+                }
+
+                boolean isNotStarted = !isAnyObtained && !isDone;
+                boolean otherIsNotStarted = !otherIsAnyObtained && !otherIsDone;
+                if (!isNotStarted) {
+                    if (otherIsNotStarted) {
+                        return 1;
+                    }
+                } else if (!otherIsNotStarted) {
+                    return -1;
+                }
+
+                AdvancementDisplay display = advancement.getAdvancement().display().orElse(null);
+                AdvancementDisplay nextDisplay = otherAdvancement.getAdvancement().display().orElse(null);
+                if (display == null || nextDisplay == null) {
+                    return 0;
+                }
+                int frameIndex = FRAME_TYPE_PRIORITY.indexOf(display.getFrame());
+                int nextFrameIndex = FRAME_TYPE_PRIORITY.indexOf(nextDisplay.getFrame());
+                int frameIndexComparison = Integer.compare(frameIndex, nextFrameIndex);
+                if (frameIndexComparison != 0) {
+                    return frameIndexComparison;
+                }
+                int totalRequirementsCountComparison = Integer.compare(
+                    totalRequirementsCount,
+                    otherTotalRequirementsCount
+                );
+                if (totalRequirementsCountComparison != 0) {
+                    return totalRequirementsCountComparison;
+                }
+                return advancement.getAdvancementEntry().id().compareTo(otherAdvancement.getAdvancementEntry().id());
+            });
         }
-        return carouselAdvancements;
+        return advancementsList;
     }
 
     @Unique
-    private boolean isCarouselAdvancement(@Nullable PlacedAdvancement placedAdvancement) {
+    private boolean shouldIncludeAdvancement(@Nullable PlacedAdvancement placedAdvancement) {
         if (placedAdvancement == null) {
             return false;
         }
@@ -177,6 +232,31 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         return true;
     }
 
+    @Unique
+    private @Nullable AdvancementWidget getListAdvancementWidget(int index) {
+        if (advancementsList == null || index < 0 || index >= advancementsList.size()) {
+            return null;
+        }
+        PlacedAdvancement placedAdvancement = advancementsList.get(index);
+        if (placedAdvancement == null || selectedTab == null || client == null) {
+            return null;
+        }
+        AdvancementDisplay display = placedAdvancement.getAdvancement().display().orElse(null);
+        if (display == null) {
+            return null;
+        }
+        AdvancementWidget widget = advancementWidgetsCache.computeIfAbsent(placedAdvancement, k ->
+            new AdvancementWidget(selectedTab, client, placedAdvancement, display)
+        );
+        if (!(widget instanceof AdvancementWidgetExtension advancementWidgetExtension)) {
+            return null;
+        }
+        advancementWidgetExtension.advancementsexplorer$setForceMirrorTooltipHorizontally(false);
+        advancementWidgetExtension.advancementsexplorer$setForceMirrorTooltipVertically(false);
+        widget.setProgress(advancementHandler.advancementProgresses.get(placedAdvancement.getAdvancementEntry()));
+        return widget;
+    }
+
     @Override
     public void advancementsexplorer$tick() {
         if (focusedAdvancementReleaseClickTimer > 0) {
@@ -191,18 +271,20 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
 
     @Override
     public boolean advancementsexplorer$charTyped(char chr, int modifiers) {
-        return viewState.isTransitionState();
+        return screenState.isTransitionState();
     }
 
     @Override
     public void advancementsexplorer$setFocusedAdvancement(@Nullable AdvancementWidget advancementWidget) {
         PlacedAdvancement placedAdvancement = advancementWidget != null ? advancementWidget.advancement : null;
-        if (viewState != AdvancementsScreenState.WINDOW_VISIBLE &&
+        if (screenState != AdvancementsScreenState.WINDOW_VISIBLE &&
             Objects.equals(focusedPlacedAdvancement, placedAdvancement)
         ) {
             return;
         }
-        if (advancementWidget != null && !isCarouselAdvancement(advancementWidget.advancement)) {
+        if (advancementWidget != null && !shouldIncludeAdvancement(placedAdvancement)) {
+            focusedPlacedAdvancement = null;
+            focusedAdvancementWidget = null;
             return;
         }
         focusedPlacedAdvancement = placedAdvancement;
@@ -218,7 +300,7 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
             double deltaX = mouseX - focusedAdvancementClickX;
             double deltaY = mouseY - focusedAdvancementClickY;
             if (Math.sqrt(deltaX * deltaX + deltaY * deltaY) < DRAG_THRESHOLD) {
-                startTransitionToCarousel();
+                openInfo();
             }
             isFocusedAdvancementClicked = false;
         }
@@ -242,10 +324,13 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         int button,
         CallbackInfoReturnable<Boolean> cir
     ) {
-        if (viewState != AdvancementsScreenState.WINDOW_VISIBLE) {
+        if (screenState != AdvancementsScreenState.WINDOW_VISIBLE) {
             cir.setReturnValue(false);
         }
-        if (focusedPlacedAdvancement != null && !isFocusedAdvancementClicked && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+        if (focusedPlacedAdvancement != null &&
+            !isFocusedAdvancementClicked &&
+            button == GLFW.GLFW_MOUSE_BUTTON_LEFT
+        ) {
             focusedAdvancementClickX = mouseX;
             focusedAdvancementClickY = mouseY;
             focusedAdvancementReleaseClickTimer = FOCUSED_ADVANCEMENT_CLICK_TIMEOUT_TICKS;
@@ -268,7 +353,7 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         double deltaY,
         CallbackInfoReturnable<Boolean> cir
     ) {
-        if (viewState != AdvancementsScreenState.WINDOW_VISIBLE) {
+        if (screenState != AdvancementsScreenState.WINDOW_VISIBLE) {
             cir.setReturnValue(false);
         }
     }
@@ -285,7 +370,12 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         double verticalAmount,
         CallbackInfoReturnable<Boolean> cir
     ) {
-        if (viewState != AdvancementsScreenState.WINDOW_VISIBLE) {
+        if (horizontalAmount == 0 && verticalAmount != 0 && screenState == AdvancementsScreenState.INFO_VISIBLE) {
+            currentAdvancementIndex -= (int) verticalAmount;
+            currentAdvancementIndex = MathHelper.clamp(currentAdvancementIndex, 0, advancementsList.size() - 1);
+            cir.setReturnValue(false);
+        }
+        if (screenState != AdvancementsScreenState.WINDOW_VISIBLE) {
             cir.setReturnValue(false);
         }
     }
@@ -300,16 +390,19 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         cancellable = true
     )
     public void moveWindow(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        if (viewState.isTransitionState()) {
+        if (client == null) {
+            return;
+        }
+        if (screenState.isTransitionState()) {
             tooltipTransitionProgress += (delta / 20.0f) / ANIMATION_DURATION_SECONDS;
             if (tooltipTransitionProgress >= 1.0f) {
                 tooltipTransitionProgress = 1.0f;
-                viewState = viewState == AdvancementsScreenState.TRANSITION_TO_CAROUSEL
-                    ? AdvancementsScreenState.CAROUSEL_VISIBLE
+                screenState = screenState == AdvancementsScreenState.OPENING_INFO
+                    ? AdvancementsScreenState.INFO_VISIBLE
                     : AdvancementsScreenState.WINDOW_VISIBLE;
                 transitionAdvancementWidget = null;
             }
-            if (transitionAdvancementWidget == null && focusedAdvancementWidget != null && client != null) {
+            if (transitionAdvancementWidget == null && focusedAdvancementWidget != null) {
                 AdvancementTab focusedAdvancementTab = focusedAdvancementWidget.tab;
                 transitionAdvancementWidget = new AdvancementWidget(
                     focusedAdvancementTab,
@@ -319,56 +412,55 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
                 );
                 transitionAdvancementWidget.setProgress(focusedAdvancementWidget.progress);
                 if (focusedAdvancementWidget instanceof AdvancementWidgetExtension advancementWidgetExtension) {
-                    int tooltipWidth = focusedAdvancementWidget.getWidth();
-                    int tooltipHeight = advancementWidgetExtension.advancementsexplorer$getTooltipHeight();
+                    int tooltipWidth = advancementWidgetExtension.advancementsexplorer$getTooltipWidth();
+                    int tooltipHeight = advancementWidgetExtension.advancementsexplorer$getTooltipHeight(true);
                     tooltipTransitionEndX = width / 4 - tooltipWidth / 2;
-                    tooltipTransitionEndY = height / 2 - tooltipHeight / 2;
+                    tooltipTransitionEndY = height / 2 - tooltipHeight / 2 - Constants.ADVANCEMENT_FRAME_OVERHANG;
                     shouldHorizontallySwapTransitionTooltip =
                         advancementWidgetExtension.advancementsexplorer$isTooltipMirroredHorizontally();
                     shouldVerticallySwapTransitionTooltip =
                         advancementWidgetExtension.advancementsexplorer$isTooltipMirroredVertically();
-                    widgetTransitionX =
+                    tooltipTransitionStartX =
                         windowTreeX + MathHelper.floor(focusedAdvancementTab.originX) + focusedAdvancementWidget.x;
-                    widgetTransitionY =
+                    tooltipTransitionStartY =
                         windowTreeY + MathHelper.floor(focusedAdvancementTab.originY) + focusedAdvancementWidget.y;
                     if (shouldHorizontallySwapTransitionTooltip) {
-                        widgetTransitionX -= tooltipWidth;
-                        widgetTransitionX += Constants.ADVANCEMENT_FRAME_SIZE + Constants.ADVANCEMENT_FRAME_OVERHANG * 2;
+                        tooltipTransitionStartX -= tooltipWidth;
+                        tooltipTransitionStartX += Constants.ADVANCEMENT_FRAME_SIZE +
+                            Constants.ADVANCEMENT_FRAME_OVERHANG * 2;
                     }
                     if (shouldVerticallySwapTransitionTooltip) {
-                        widgetTransitionY -= tooltipHeight;
-                        widgetTransitionY += Constants.ADVANCEMENT_FRAME_SIZE - Constants.ADVANCEMENT_FRAME_OVERHANG * 2;
+                        tooltipTransitionStartY -= tooltipHeight;
+                        tooltipTransitionStartY += Constants.ADVANCEMENT_FRAME_SIZE -
+                            Constants.ADVANCEMENT_FRAME_OVERHANG * 2;
                     }
                 }
                 if (transitionAdvancementWidget instanceof AdvancementWidgetExtension advancementWidgetExtension) {
                     advancementWidgetExtension.advancementsexplorer$setForceMirrorTooltipHorizontally(false);
                     advancementWidgetExtension.advancementsexplorer$setForceMirrorTooltipVertically(false);
-                    advancementWidgetExtension.advancementsexplorer$setX(widgetTransitionX);
-                    advancementWidgetExtension.advancementsexplorer$setY(widgetTransitionY);
+                    advancementWidgetExtension.advancementsexplorer$setX(tooltipTransitionStartX);
+                    advancementWidgetExtension.advancementsexplorer$setY(tooltipTransitionStartY);
                 }
                 focusedAdvancementWidget = null;
             }
             if (transitionAdvancementWidget instanceof AdvancementWidgetExtension advancementWidgetExtension) {
-                float middleX = width / 2f;
-                float middleY = height / 2f;
                 float progress = tooltipTransitionProgress;
-                float inverse = 1.0F - progress;
-                float startX = widgetTransitionX;
+                float easedProgress = (float) Math.pow(progress, 2.2d);
+                float inverse = 1.0f - easedProgress;
+                float startX = tooltipTransitionStartX;
+                float middleX = width / 2f;
                 float endX = tooltipTransitionEndX;
-
-                float newX = inverse * inverse * startX
-                    + 2.0F * inverse * progress * middleX
-                    + progress * progress * endX;
-
-                float startY = widgetTransitionY;
+                float newX = inverse * inverse * startX +
+                    2.0f * inverse * easedProgress * middleX +
+                    easedProgress * easedProgress * endX;
+                float startY = tooltipTransitionStartY;
+                float middleY = height / 2f;
                 float endY = tooltipTransitionEndY;
-
-                float newY = inverse * inverse * startY
-                    + 2.0F * inverse * progress * middleY
-                    + progress * progress * endY;
-
-                advancementWidgetExtension.advancementsexplorer$setX((int) newX);
-                advancementWidgetExtension.advancementsexplorer$setY((int) newY);
+                float newY = inverse * inverse * startY +
+                    2.0f * inverse * easedProgress * middleY +
+                    easedProgress * easedProgress * endY;
+                advancementWidgetExtension.advancementsexplorer$setX(MathHelper.floor(newX));
+                advancementWidgetExtension.advancementsexplorer$setY(MathHelper.floor(newY));
 
                 if (shouldHorizontallySwapTransitionTooltip) {
                     advancementWidgetExtension
@@ -381,24 +473,66 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
                 transitionAdvancementWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
             }
         }
-        if (viewState != AdvancementsScreenState.WINDOW_VISIBLE) {
-            if (viewState == AdvancementsScreenState.CAROUSEL_VISIBLE) {
-                PlacedAdvancement centerAdvancement = carouselAdvancements.get(carouselCenterIndex);
-                if (centerAdvancement != null && selectedTab != null && client != null) {
-                    AdvancementDisplay display = centerAdvancement.getAdvancement().display().orElse(null);
-                    if (display != null) {
-                        AdvancementWidget centerWidget = carouselWidgets.computeIfAbsent(centerAdvancement, k ->
-                            new AdvancementWidget(selectedTab, client, centerAdvancement, display)
-                        );
-                        centerWidget.setProgress(advancementHandler.advancementProgresses.get(centerAdvancement.getAdvancementEntry()));
-                        if (centerWidget instanceof AdvancementWidgetExtension advancementWidgetExtension) {
-                            advancementWidgetExtension.advancementsexplorer$setForceMirrorTooltipHorizontally(false);
-                            advancementWidgetExtension.advancementsexplorer$setForceMirrorTooltipVertically(false);
-                            advancementWidgetExtension.advancementsexplorer$setX(tooltipTransitionEndX);
-                            advancementWidgetExtension.advancementsexplorer$setY(tooltipTransitionEndY);
-                        }
-                        centerWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
+        if (screenState != AdvancementsScreenState.WINDOW_VISIBLE) {
+            AdvancementWidget centerWidget = getListAdvancementWidget(currentAdvancementIndex);
+            if (centerWidget instanceof AdvancementWidgetExtension centerAdvancementWidgetExtension) {
+                int centerSpace = 15;
+                int space = 10;
+                int listWidth = width / 2;
+                int listHeight = height;
+                int listCenterX = listWidth / 2;
+                int listCenterY = listHeight / 2;
+
+                int tooltipWidth = centerAdvancementWidgetExtension.advancementsexplorer$getTooltipWidth();
+                int tooltipHeight = centerAdvancementWidgetExtension.advancementsexplorer$getTooltipHeight(true);
+                int tooltipX = listCenterX - tooltipWidth / 2;
+                int tooltipY = listCenterY - tooltipHeight / 2 - Constants.ADVANCEMENT_FRAME_OVERHANG;
+                centerAdvancementWidgetExtension.advancementsexplorer$setX(tooltipX);
+                centerAdvancementWidgetExtension.advancementsexplorer$setY(tooltipY);
+                if (screenState == AdvancementsScreenState.INFO_VISIBLE) {
+                    centerWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
+                }
+
+                int nextIndex = currentAdvancementIndex;
+                float nextTooltipTop = tooltipY + tooltipHeight + centerSpace;
+                while (nextTooltipTop <= height) {
+                    nextIndex++;
+                    AdvancementWidget nextWidget = getListAdvancementWidget(nextIndex);
+                    if (!(nextWidget instanceof AdvancementWidgetExtension nextAdvancementWidgetExtension)) {
+                        break;
                     }
+                    int nextTooltipWidth = nextAdvancementWidgetExtension.advancementsexplorer$getTooltipWidth();
+                    int nextTooltipHeight = nextAdvancementWidgetExtension.advancementsexplorer$getTooltipHeight(true);
+                    int nextTooltipCenterX = nextTooltipWidth / 2;
+                    int nextTooltipX = listCenterX - nextTooltipCenterX;
+                    float nextTooltipY = nextTooltipTop;
+
+                    nextAdvancementWidgetExtension.advancementsexplorer$setX(nextTooltipX);
+                    nextAdvancementWidgetExtension.advancementsexplorer$setY(MathHelper.floor(nextTooltipY));
+                    nextWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
+
+                    nextTooltipTop += nextTooltipHeight + space;
+                }
+
+                int prevIndex = currentAdvancementIndex;
+                float prevTooltipBottom = tooltipY - centerSpace;
+                while (prevTooltipBottom >= 0) {
+                    prevIndex--;
+                    AdvancementWidget prevWidget = getListAdvancementWidget(prevIndex);
+                    if (!(prevWidget instanceof AdvancementWidgetExtension prevAdvancementWidgetExtension)) {
+                        break;
+                    }
+                    int prevTooltipWidth = prevAdvancementWidgetExtension.advancementsexplorer$getTooltipWidth();
+                    int prevTooltipHeight = prevAdvancementWidgetExtension.advancementsexplorer$getTooltipHeight(true);
+                    int prevTooltipCenterX = prevTooltipWidth / 2;
+                    int prevTooltipX = listCenterX - prevTooltipCenterX;
+                    float prevTooltipY = prevTooltipBottom - prevTooltipHeight;
+
+                    prevAdvancementWidgetExtension.advancementsexplorer$setX(prevTooltipX);
+                    prevAdvancementWidgetExtension.advancementsexplorer$setY(MathHelper.floor(prevTooltipY));
+                    prevWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
+
+                    prevTooltipBottom -= prevTooltipHeight + space;
                 }
             }
             ci.cancel();
@@ -417,14 +551,14 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         CallbackInfoReturnable<Boolean> cir
     ) {
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-            if (viewState == AdvancementsScreenState.CAROUSEL_VISIBLE) {
-                startTransitionToWindow();
+            if (screenState == AdvancementsScreenState.INFO_VISIBLE) {
+                screenState = AdvancementsScreenState.WINDOW_VISIBLE;
                 cir.setReturnValue(true);
-            } else if (viewState == AdvancementsScreenState.TRANSITION_TO_CAROUSEL) {
+            } else if (screenState == AdvancementsScreenState.OPENING_INFO) {
                 cir.setReturnValue(true);
             }
         } else {
-            if (viewState.isTransitionState()) {
+            if (screenState.isTransitionState()) {
                 cir.setReturnValue(true);
             }
         }

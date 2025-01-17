@@ -9,7 +9,9 @@ public interface AdvancementWidgetExtension {
 
     void advancementsexplorer$setForceMirrorTooltipVertically(Boolean forceMirrorTooltipVertically);
 
-    int advancementsexplorer$getTooltipHeight();
+    int advancementsexplorer$getTooltipWidth();
+
+    int advancementsexplorer$getTooltipHeight(boolean withDescription);
 
     void advancementsexplorer$setX(int x);
 

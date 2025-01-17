@@ -3,11 +3,11 @@ package com.diskree.advancementsexplorer.util;
 public enum AdvancementsScreenState {
 
     WINDOW_VISIBLE,
-    TRANSITION_TO_CAROUSEL,
-    CAROUSEL_VISIBLE,
-    TRANSITION_TO_WINDOW;
+    OPENING_INFO,
+    INFO_VISIBLE,
+    CLOSING_INFO;
 
     public boolean isTransitionState() {
-        return this == TRANSITION_TO_CAROUSEL || this == TRANSITION_TO_WINDOW;
+        return this == OPENING_INFO || this == CLOSING_INFO;
     }
 }

@@ -2,6 +2,7 @@ package com.diskree.advancementsexplorer.injection.mixin;
 
 import com.diskree.advancementsexplorer.Constants;
 import com.diskree.advancementsexplorer.injection.extension.AdvancementWidgetExtension;
+import com.diskree.advancementsexplorer.util.AdvancementWidgetRenderPriority;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -25,7 +26,7 @@ import java.util.List;
 import java.util.function.Function;
 
 @Mixin(AdvancementWidget.class)
-public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
+public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtension {
 
     @Unique
     private Boolean forceMirrorTooltipHorizontally;
@@ -40,13 +41,24 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
     private boolean isTooltipMirroredVertically;
 
     @Unique
-    private int tooltipHeight;
+    private int tooltipHeight = Integer.MIN_VALUE;
+
+    @Unique
+    private int tooltipDescriptionHeight = Integer.MIN_VALUE;
 
     @Unique
     private float horizontallySwapAnimationProgress;
 
     @Unique
     private float verticallySwapAnimationProgress;
+
+    @Unique
+    private boolean shouldOnlyCalculateTooltipHeightOnNextRender;
+
+    @Unique
+    private void applyRenderPriority(@NotNull DrawContext context, @NotNull AdvancementWidgetRenderPriority priority) {
+        context.getMatrices().translate(0, 0, (priority.ordinal() + 1) * 100);
+    }
 
     @Override
     public boolean advancementsexplorer$isTooltipMirroredHorizontally() {
@@ -69,8 +81,22 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
     }
 
     @Override
-    public int advancementsexplorer$getTooltipHeight() {
-        return tooltipHeight;
+    public int advancementsexplorer$getTooltipWidth() {
+        return width - 1;
+    }
+
+    @Override
+    public int advancementsexplorer$getTooltipHeight(boolean withDescription) {
+        if (tooltipHeight == Integer.MIN_VALUE || tooltipDescriptionHeight == Integer.MIN_VALUE) {
+            shouldOnlyCalculateTooltipHeightOnNextRender = true;
+            drawTooltip(null, 0, 0, 1.0f, 0, 0);
+            shouldOnlyCalculateTooltipHeightOnNextRender = false;
+        }
+        int result = tooltipHeight;
+        if (!withDescription) {
+            result -= tooltipDescriptionHeight;
+        }
+        return result;
     }
 
     @Override
@@ -93,10 +119,6 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
         this.verticallySwapAnimationProgress = verticallySwapAnimationProgress;
     }
 
-    @Shadow
-    @Final
-    private List<OrderedText> description;
-
     @Mutable
     @Shadow
     @Final
@@ -111,6 +133,9 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
     @Final
     private int width;
 
+    @Shadow
+    public abstract void drawTooltip(DrawContext context, int originX, int originY, float alpha, int x, int y);
+
     @Inject(
         method = "drawTooltip",
         at = @At(
@@ -119,7 +144,7 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
             shift = At.Shift.AFTER
         )
     )
-    public void saveRenderParameters(
+    public void saveMirroringFlags(
         DrawContext context,
         int originX,
         int originY,
@@ -128,16 +153,37 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
         int y,
         CallbackInfo ci,
         @Local(ordinal = 0) boolean isMirroredHorizontally,
-        @Local(ordinal = 1) boolean isMirroredVertically,
-        @Local(ordinal = 4) int titleHeight,
-        @Local(ordinal = 8) int descriptionHeight
+        @Local(ordinal = 1) boolean isMirroredVertically
     ) {
         isTooltipMirroredHorizontally = isMirroredHorizontally;
         isTooltipMirroredVertically = isMirroredVertically;
+    }
 
-        tooltipHeight = titleHeight - Constants.ADVANCEMENT_FRAME_OVERHANG * 2;
-        if (!description.isEmpty()) {
-            tooltipHeight += descriptionHeight;
+    @Inject(
+        method = "drawTooltip",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/util/math/MathHelper;floor(F)I",
+            shift = At.Shift.BEFORE
+        ),
+        cancellable = true
+    )
+    public void calculateTooltipHeight(
+        DrawContext context,
+        int originX,
+        int originY,
+        float alpha,
+        int x,
+        int y,
+        CallbackInfo ci,
+        @Local(ordinal = 4) int titleHeight,
+        @Local(ordinal = 8) int descriptionHeight
+    ) {
+        if (shouldOnlyCalculateTooltipHeightOnNextRender) {
+            titleHeight -= 6;
+            tooltipHeight = titleHeight + descriptionHeight;
+            tooltipDescriptionHeight = descriptionHeight;
+            ci.cancel();
         }
     }
 
@@ -180,25 +226,29 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
         DrawContext context,
         Function<Identifier, RenderLayer> renderLayers,
         Identifier sprite,
-        int x,
-        int y,
-        int width,
-        int height,
+        int progressBarX,
+        int progressBarY,
+        int progressBarWidth,
+        int progressBarHeight,
         @NotNull Operation<Void> original,
         @Local(argsOnly = true, ordinal = 0) int originX,
         @Local(argsOnly = true, ordinal = 1) int originY
     ) {
+        boolean shouldApplyRenderPriority = false;
         if (verticallySwapAnimationProgress != 0.0f) {
-            y = MathHelper.lerp(
+            progressBarY = MathHelper.lerp(
                 verticallySwapAnimationProgress,
-                originY + this.y + this.tooltipHeight - 26 + 3,
-                y
+                originY + y + advancementsexplorer$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 3,
+                progressBarY
             );
-            context.getMatrices().push();
-            context.getMatrices().translate(0, 0, 400);
+            shouldApplyRenderPriority = true;
         }
-        original.call(context, renderLayers, sprite, x, y, width, height);
-        if (verticallySwapAnimationProgress != 0.0f) {
+        if (shouldApplyRenderPriority) {
+            context.getMatrices().push();
+            applyRenderPriority(context, AdvancementWidgetRenderPriority.PROGRESS_BAR);
+        }
+        original.call(context, renderLayers, sprite, progressBarX, progressBarY, progressBarWidth, progressBarHeight);
+        if (shouldApplyRenderPriority) {
             context.getMatrices().pop();
         }
     }
@@ -210,32 +260,48 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
             target = "Lnet/minecraft/client/gui/DrawContext;drawGuiTexture(Ljava/util/function/Function;Lnet/minecraft/util/Identifier;IIIIIIII)V"
         )
     )
-    public void wrapProgressBarPartsRender(
+    public void wrapProgressBarRender(
         DrawContext context,
         Function<Identifier, RenderLayer> renderLayers,
         Identifier sprite,
         int textureWidth,
         int textureHeight,
-        int u,
-        int v,
-        int x,
-        int y,
-        int width,
-        int height,
+        int textureU,
+        int textureV,
+        int partX,
+        int partY,
+        int partWidth,
+        int partHeight,
         @NotNull Operation<Void> original,
         @Local(argsOnly = true, ordinal = 1) int originY
     ) {
+        boolean shouldApplyRenderPriority = false;
         if (verticallySwapAnimationProgress != 0.0f) {
-            y = MathHelper.lerp(
+            partY = MathHelper.lerp(
                 verticallySwapAnimationProgress,
-                originY + this.y + this.tooltipHeight - 26 + 3,
-                y
+                originY + y + advancementsexplorer$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 3,
+                partY
             );
-            context.getMatrices().push();
-            context.getMatrices().translate(0, 0, 400);
+            shouldApplyRenderPriority = true;
         }
-        original.call(context, renderLayers, sprite, textureWidth, textureHeight, u, v, x, y, width, height);
-        if (verticallySwapAnimationProgress != 0.0f) {
+        if (shouldApplyRenderPriority) {
+            context.getMatrices().push();
+            applyRenderPriority(context, AdvancementWidgetRenderPriority.PROGRESS_BAR);
+        }
+        original.call(
+            context,
+            renderLayers,
+            sprite,
+            textureWidth,
+            textureHeight,
+            textureU,
+            textureV,
+            partX,
+            partY,
+            partWidth,
+            partHeight
+        );
+        if (shouldApplyRenderPriority) {
             context.getMatrices().pop();
         }
     }
@@ -252,38 +318,38 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
         DrawContext context,
         Function<Identifier, RenderLayer> renderLayers,
         Identifier sprite,
-        int x,
-        int y,
-        int width,
-        int height,
+        int frameX,
+        int frameY,
+        int frameWidth,
+        int frameHeight,
         @NotNull Operation<Void> original,
         @Local(argsOnly = true, ordinal = 0) int originX,
         @Local(argsOnly = true, ordinal = 1) int originY
     ) {
-        boolean shouldBringToFront = false;
+        boolean shouldApplyRenderPriority = false;
         if (horizontallySwapAnimationProgress != 0.0f) {
-            x = MathHelper.lerp(
+            frameX = MathHelper.lerp(
                 horizontallySwapAnimationProgress,
-                originX + this.x + this.width - 26 - 3,
-                x
+                originX + x + advancementsexplorer$getTooltipWidth() - Constants.ADVANCEMENT_FRAME_SIZE - 3,
+                frameX
             );
-            shouldBringToFront = true;
+            shouldApplyRenderPriority = true;
         }
         if (verticallySwapAnimationProgress != 0.0f) {
-            y = MathHelper.lerp(
+            frameY = MathHelper.lerp(
                 verticallySwapAnimationProgress,
-                originY + this.y + this.tooltipHeight - 26 + 3,
-                y
+                originY + y + advancementsexplorer$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 3,
+                frameY
             );
-            shouldBringToFront = true;
+            shouldApplyRenderPriority = true;
         }
 
-        if (shouldBringToFront) {
+        if (shouldApplyRenderPriority) {
             context.getMatrices().push();
-            context.getMatrices().translate(0, 0, 600);
+            applyRenderPriority(context, AdvancementWidgetRenderPriority.FRAME);
         }
-        original.call(context, renderLayers, sprite, x, y, width, height);
-        if (shouldBringToFront) {
+        original.call(context, renderLayers, sprite, frameX, frameY, frameWidth, frameHeight);
+        if (shouldApplyRenderPriority) {
             context.getMatrices().pop();
         }
     }
@@ -296,35 +362,39 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
             ordinal = 1
         )
     )
-    public void horizontallySwapTitle(
+    public void wrapTitleRender(
         AdvancementWidget widget,
         DrawContext context,
         List<OrderedText> text,
-        int x,
-        int y,
+        int titleX,
+        int titleY,
         int color,
         @NotNull Operation<Void> original,
         @Local(ordinal = 13) int s,
         @Local(argsOnly = true, ordinal = 1) int originY
     ) {
+        boolean shouldApplyRenderPriority = false;
         if (horizontallySwapAnimationProgress != 0.0f) {
-            x = MathHelper.lerp(
+            titleX = MathHelper.lerp(
                 horizontallySwapAnimationProgress,
                 s,
-                x
+                titleX
             );
         }
         if (verticallySwapAnimationProgress != 0.0f) {
-            y = MathHelper.lerp(
+            titleY = MathHelper.lerp(
                 verticallySwapAnimationProgress,
-                originY + this.y + this.tooltipHeight - 26 + 3 + 8,
-                y
+                originY + y + advancementsexplorer$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 3 + 8,
+                titleY
             );
-            context.getMatrices().push();
-            context.getMatrices().translate(0, 0, 500);
+            shouldApplyRenderPriority = true;
         }
-        original.call(widget, context, text, x, y, color);
-        if (verticallySwapAnimationProgress != 0.0f) {
+        if (shouldApplyRenderPriority) {
+            context.getMatrices().push();
+            applyRenderPriority(context, AdvancementWidgetRenderPriority.TITLE);
+        }
+        original.call(widget, context, text, titleX, titleY, color);
+        if (shouldApplyRenderPriority) {
             context.getMatrices().pop();
         }
     }
@@ -337,36 +407,40 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
             ordinal = 1
         )
     )
-    public int horizontallySwapProgressText(
+    public int wrapProgressTextRender(
         DrawContext context,
         TextRenderer textRenderer,
         Text text,
-        int x,
-        int y,
+        int progressTextX,
+        int progressTextY,
         int color,
         Operation<Integer> original,
         @Local(argsOnly = true, ordinal = 0) int originX,
         @Local(argsOnly = true, ordinal = 1) int originY,
         @Local(ordinal = 9) int progressTextWidth
     ) {
+        boolean shouldApplyRenderPriority = false;
         if (horizontallySwapAnimationProgress != 0.0f) {
-            x = MathHelper.lerp(
+            progressTextX = MathHelper.lerp(
                 horizontallySwapAnimationProgress,
-                originX + this.x + width - progressTextWidth - 26 - 6,
-                x
+                originX + x + advancementsexplorer$getTooltipWidth() - progressTextWidth - Constants.ADVANCEMENT_FRAME_SIZE - 6,
+                progressTextX
             );
         }
         if (verticallySwapAnimationProgress != 0.0f) {
-            y = MathHelper.lerp(
+            progressTextY = MathHelper.lerp(
                 verticallySwapAnimationProgress,
-                originY + this.y + this.tooltipHeight - 26 + 3 + 8,
-                y
+                originY + y + advancementsexplorer$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 3 + 8,
+                progressTextY
             );
-            context.getMatrices().push();
-            context.getMatrices().translate(0, 0, 500);
+            shouldApplyRenderPriority = true;
         }
-        int result = original.call(context, textRenderer, text, x, y, color);
-        if (verticallySwapAnimationProgress != 0.0f) {
+        if (shouldApplyRenderPriority) {
+            context.getMatrices().push();
+            applyRenderPriority(context, AdvancementWidgetRenderPriority.PROGRESS_TEXT);
+        }
+        int result = original.call(context, textRenderer, text, progressTextX, progressTextY, color);
+        if (shouldApplyRenderPriority) {
             context.getMatrices().pop();
         }
         return result;
@@ -379,35 +453,38 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
             target = "Lnet/minecraft/client/gui/DrawContext;drawItemWithoutEntity(Lnet/minecraft/item/ItemStack;II)V"
         )
     )
-    public void wrapItemIconRender(
+    public void wrapIconRender(
         DrawContext context,
         ItemStack stack,
-        int x,
-        int y,
+        int itemX,
+        int itemY,
         Operation<Void> original,
         @Local(argsOnly = true, ordinal = 0) int originX,
         @Local(argsOnly = true, ordinal = 1) int originY
     ) {
+        boolean shouldApplyRenderPriority = false;
         if (horizontallySwapAnimationProgress != 0.0f) {
-            x = MathHelper.lerp(
+            itemX = MathHelper.lerp(
                 horizontallySwapAnimationProgress,
-                originX + this.x + this.width - 26 - 3 + 5,
-                x
+                originX + x + advancementsexplorer$getTooltipWidth() - Constants.ADVANCEMENT_FRAME_SIZE - 3 + 5,
+                itemX
             );
+            shouldApplyRenderPriority = true;
         }
         if (verticallySwapAnimationProgress != 0.0f) {
-            y = MathHelper.lerp(
+            itemY = MathHelper.lerp(
                 verticallySwapAnimationProgress,
-                originY + this.y + this.tooltipHeight - 26 + 5 + 3,
-                y
+                originY + y + advancementsexplorer$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 5 + 3,
+                itemY
             );
+            shouldApplyRenderPriority = true;
         }
-        if (horizontallySwapAnimationProgress != 0.0f || verticallySwapAnimationProgress != 0.0f) {
+        if (shouldApplyRenderPriority) {
             context.getMatrices().push();
-            context.getMatrices().translate(0, 0, 700);
+            applyRenderPriority(context, AdvancementWidgetRenderPriority.ICON);
         }
-        original.call(context, stack, x, y);
-        if (horizontallySwapAnimationProgress != 0.0f || verticallySwapAnimationProgress != 0.0f) {
+        original.call(context, stack, itemX, itemY);
+        if (shouldApplyRenderPriority) {
             context.getMatrices().pop();
         }
     }
@@ -424,19 +501,28 @@ public class AdvancementWidgetMixin implements AdvancementWidgetExtension {
         AdvancementWidget widget,
         DrawContext context,
         List<OrderedText> text,
-        int x,
-        int y,
+        int descriptionX,
+        int descriptionY,
         int color,
         Operation<Void> original,
         @Local(argsOnly = true, ordinal = 1) int originY
     ) {
+        boolean shouldApplyRenderPriority = false;
         if (verticallySwapAnimationProgress != 0.0f) {
-            y = MathHelper.lerp(
+            descriptionY = MathHelper.lerp(
                 verticallySwapAnimationProgress,
-                originY + this.y + 7,
-                y
+                originY + y + 7,
+                descriptionY
             );
+            shouldApplyRenderPriority = true;
         }
-        original.call(widget, context, text, x, y, color);
+        if (shouldApplyRenderPriority) {
+            context.getMatrices().push();
+            applyRenderPriority(context, AdvancementWidgetRenderPriority.DESCRIPTION);
+        }
+        original.call(widget, context, text, descriptionX, descriptionY, color);
+        if (shouldApplyRenderPriority) {
+            context.getMatrices().pop();
+        }
     }
 }
