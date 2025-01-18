@@ -56,6 +56,9 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
     private boolean shouldOnlyCalculateTooltipHeightOnNextRender;
 
     @Unique
+    private boolean isCollapsed;
+
+    @Unique
     private void applyRenderPriority(@NotNull DrawContext context, @NotNull AdvancementWidgetRenderPriority priority) {
         context.getMatrices().translate(0, 0, (priority.ordinal() + 1) * 100);
     }
@@ -119,6 +122,12 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
         this.verticallySwapAnimationProgress = verticallySwapAnimationProgress;
     }
 
+    @Override
+    public void advancementsexplorer$setCollapsed(boolean isCollapsed) {
+        this.isCollapsed = isCollapsed;
+        tooltipHeight = tooltipDescriptionHeight = Integer.MIN_VALUE;
+    }
+
     @Mutable
     @Shadow
     @Final
@@ -180,7 +189,10 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
         @Local(ordinal = 8) int descriptionHeight
     ) {
         if (shouldOnlyCalculateTooltipHeightOnNextRender) {
-            titleHeight -= 6;
+            titleHeight -= Constants.ADVANCEMENT_FRAME_OVERHANG * 2;
+            if (isCollapsed) {
+                descriptionHeight = 0;
+            }
             tooltipHeight = titleHeight + descriptionHeight;
             tooltipDescriptionHeight = descriptionHeight;
             ci.cancel();
@@ -212,6 +224,17 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
         if (forceMirrorTooltipVertically != null) {
             isMirroredVerticallyRef.set(forceMirrorTooltipVertically);
         }
+    }
+
+    @WrapOperation(
+        method = "drawTooltip",
+        at = @At(
+            value = "INVOKE",
+            target = "Ljava/util/List;isEmpty()Z"
+        )
+    )
+    public boolean hideDescriptionWhenCollapsed(List<OrderedText> description, @NotNull Operation<Boolean> original) {
+        return original.call(description) || isCollapsed;
     }
 
     @WrapOperation(
@@ -326,6 +349,9 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
         @Local(argsOnly = true, ordinal = 0) int originX,
         @Local(argsOnly = true, ordinal = 1) int originY
     ) {
+//        if (isCollapsed) {
+//            return;
+//        }
         boolean shouldApplyRenderPriority = false;
         if (horizontallySwapAnimationProgress != 0.0f) {
             frameX = MathHelper.lerp(
@@ -507,6 +533,9 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
         Operation<Void> original,
         @Local(argsOnly = true, ordinal = 1) int originY
     ) {
+        if (isCollapsed) {
+            return;
+        }
         boolean shouldApplyRenderPriority = false;
         if (verticallySwapAnimationProgress != 0.0f) {
             descriptionY = MathHelper.lerp(

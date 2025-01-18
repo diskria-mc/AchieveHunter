@@ -20,4 +20,6 @@ public interface AdvancementWidgetExtension {
     void advancementsexplorer$setHorizontallySwapAnimationProgress(float horizontallySwapAnimationProgress);
 
     void advancementsexplorer$setVerticallySwapAnimationProgress(float verticallySwapAnimationProgress);
+
+    void advancementsexplorer$setCollapsed(boolean isCollapsed);
 }

@@ -13,7 +13,9 @@ import net.minecraft.client.gui.screen.advancement.AdvancementTab;
 import net.minecraft.client.gui.screen.advancement.AdvancementWidget;
 import net.minecraft.client.gui.screen.advancement.AdvancementsScreen;
 import net.minecraft.client.network.ClientAdvancementManager;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -27,10 +29,28 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.awt.*;
+import java.util.List;
 import java.util.*;
 
 @Mixin(AdvancementsScreen.class)
 public class AdvancementsScreenMixin extends Screen implements AdvancementsScreenExtension {
+
+    @Unique
+    private static final Identifier CREATIVE_INVENTORY_TEXTURE =
+        Identifier.ofVanilla("textures/gui/container/creative_inventory/tab_item_search.png");
+
+    @Unique
+    private static final Point SEARCH_FIELD_UV = new Point(80, 4);
+
+    @Unique
+    private static final int SEARCH_FIELD_WIDTH = 90;
+
+    @Unique
+    private static final int SEARCH_FIELD_HEIGHT = 12;
+
+    @Unique
+    private static final int HEADER_MARGIN = 5;
 
     @Unique
     private static final int FOCUSED_ADVANCEMENT_CLICK_TIMEOUT_TICKS = 10;
@@ -39,7 +59,7 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
     private static final double DRAG_THRESHOLD = 5.0d;
 
     @Unique
-    private static final float ANIMATION_DURATION_SECONDS = 0.5f;
+    private static final float ANIMATION_DURATION_SECONDS = 0.3f;
 
     @Unique
     private static final int WINDOW_BORDER_SIZE = 9;
@@ -313,6 +333,34 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
     @Shadow
     private @Nullable AdvancementTab selectedTab;
 
+    @Shadow
+    @Final
+    public static Identifier WINDOW_TEXTURE;
+
+    @Shadow
+    @Final
+    public static int PAGE_OFFSET_X;
+
+    @Shadow
+    @Final
+    public static int PAGE_WIDTH;
+
+    @Shadow
+    @Final
+    public static int PAGE_OFFSET_Y;
+
+    @Shadow
+    @Final
+    public static int PAGE_HEIGHT;
+
+    @Shadow
+    @Final
+    public static int WINDOW_WIDTH;
+
+    @Shadow
+    @Final
+    public static int WINDOW_HEIGHT;
+
     @Inject(
         method = "mouseClicked",
         at = @At(value = "HEAD"),
@@ -476,64 +524,139 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         if (screenState != AdvancementsScreenState.WINDOW_VISIBLE) {
             AdvancementWidget centerWidget = getListAdvancementWidget(currentAdvancementIndex);
             if (centerWidget instanceof AdvancementWidgetExtension centerAdvancementWidgetExtension) {
-                int centerSpace = 15;
-                int space = 10;
-                int listWidth = width / 2;
-                int listHeight = height;
-                int listCenterX = listWidth / 2;
-                int listCenterY = listHeight / 2;
+                int verticalOffset = 15;
 
-                int tooltipWidth = centerAdvancementWidgetExtension.advancementsexplorer$getTooltipWidth();
-                int tooltipHeight = centerAdvancementWidgetExtension.advancementsexplorer$getTooltipHeight(true);
-                int tooltipX = listCenterX - tooltipWidth / 2;
-                int tooltipY = listCenterY - tooltipHeight / 2 - Constants.ADVANCEMENT_FRAME_OVERHANG;
-                centerAdvancementWidgetExtension.advancementsexplorer$setX(tooltipX);
-                centerAdvancementWidgetExtension.advancementsexplorer$setY(tooltipY);
+                int listContainerWidth = width / 2;
+                int listContainerHeight = height - verticalOffset * 2;
+                int listContainerLeft = 0;
+                int listContainerTop = verticalOffset;
+                int listContainerRight = listContainerLeft + listContainerWidth;
+                int listContainerBottom = listContainerTop + listContainerHeight;
+
+                int headerWidth = listContainerWidth;
+                int headerHeight = PAGE_OFFSET_Y;
+                int headerLeft = listContainerLeft;
+                int headerTop = verticalOffset;
+                int headerRight = headerLeft + headerWidth;
+                int headerBottom = headerTop + headerHeight;
+
+                int footerWidth = listContainerWidth;
+                int footerHeight = PAGE_OFFSET_X;
+                int footerLeft = listContainerLeft;
+                int footerTop = listContainerBottom - footerHeight;
+                int footerRight = footerLeft + footerWidth;
+                int footerBottom = footerTop + footerHeight;
+
+                int listWidth = listContainerWidth;
+                int listHeight = listContainerHeight - headerHeight - footerHeight;
+                int listLeft = listContainerLeft;
+                int listTop = headerBottom;
+                int listRight = listLeft + listWidth;
+                int listBottom = listTop + listHeight;
+                int listCenterX = listContainerWidth / 2;
+                int listCenterY = headerHeight + listHeight / 2;
+
+                int listSpacing = 10;
+                int centerTooltipSpace = listSpacing * 2;
+
+                int centerTooltipWidth = centerAdvancementWidgetExtension.advancementsexplorer$getTooltipWidth();
+                int centerTooltipHeight = centerAdvancementWidgetExtension.advancementsexplorer$getTooltipHeight(true);
+                int centerTooltipX = listCenterX - centerTooltipWidth / 2;
+                int centerTooltipY = listCenterY - centerTooltipHeight / 2 - Constants.ADVANCEMENT_FRAME_OVERHANG;
+
+                centerAdvancementWidgetExtension.advancementsexplorer$setX(centerTooltipX);
+                centerAdvancementWidgetExtension.advancementsexplorer$setY(centerTooltipY);
+                centerAdvancementWidgetExtension.advancementsexplorer$setCollapsed(false);
                 if (screenState == AdvancementsScreenState.INFO_VISIBLE) {
                     centerWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
                 }
 
                 int nextIndex = currentAdvancementIndex;
-                float nextTooltipTop = tooltipY + tooltipHeight + centerSpace;
-                while (nextTooltipTop <= height) {
+                float nextTooltipTop = centerTooltipY + centerTooltipHeight + centerTooltipSpace;
+                while (nextTooltipTop <= listBottom) {
                     nextIndex++;
                     AdvancementWidget nextWidget = getListAdvancementWidget(nextIndex);
                     if (!(nextWidget instanceof AdvancementWidgetExtension nextAdvancementWidgetExtension)) {
                         break;
                     }
+                    nextAdvancementWidgetExtension.advancementsexplorer$setCollapsed(true);
                     int nextTooltipWidth = nextAdvancementWidgetExtension.advancementsexplorer$getTooltipWidth();
-                    int nextTooltipHeight = nextAdvancementWidgetExtension.advancementsexplorer$getTooltipHeight(true);
+                    int nextTooltipHeight = nextAdvancementWidgetExtension.advancementsexplorer$getTooltipHeight(false);
                     int nextTooltipCenterX = nextTooltipWidth / 2;
                     int nextTooltipX = listCenterX - nextTooltipCenterX;
-                    float nextTooltipY = nextTooltipTop;
 
                     nextAdvancementWidgetExtension.advancementsexplorer$setX(nextTooltipX);
-                    nextAdvancementWidgetExtension.advancementsexplorer$setY(MathHelper.floor(nextTooltipY));
-                    nextWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
+                    nextAdvancementWidgetExtension.advancementsexplorer$setY(MathHelper.floor(nextTooltipTop));
 
-                    nextTooltipTop += nextTooltipHeight + space;
+                    nextWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
+                    nextTooltipTop += nextTooltipHeight + listSpacing;
                 }
 
                 int prevIndex = currentAdvancementIndex;
-                float prevTooltipBottom = tooltipY - centerSpace;
-                while (prevTooltipBottom >= 0) {
+                float prevTooltipBottom = centerTooltipY - centerTooltipSpace;
+                while (prevTooltipBottom >= listTop) {
                     prevIndex--;
                     AdvancementWidget prevWidget = getListAdvancementWidget(prevIndex);
                     if (!(prevWidget instanceof AdvancementWidgetExtension prevAdvancementWidgetExtension)) {
                         break;
                     }
+                    prevAdvancementWidgetExtension.advancementsexplorer$setCollapsed(true);
                     int prevTooltipWidth = prevAdvancementWidgetExtension.advancementsexplorer$getTooltipWidth();
-                    int prevTooltipHeight = prevAdvancementWidgetExtension.advancementsexplorer$getTooltipHeight(true);
+                    int prevTooltipHeight = prevAdvancementWidgetExtension.advancementsexplorer$getTooltipHeight(false);
                     int prevTooltipCenterX = prevTooltipWidth / 2;
                     int prevTooltipX = listCenterX - prevTooltipCenterX;
                     float prevTooltipY = prevTooltipBottom - prevTooltipHeight;
 
                     prevAdvancementWidgetExtension.advancementsexplorer$setX(prevTooltipX);
                     prevAdvancementWidgetExtension.advancementsexplorer$setY(MathHelper.floor(prevTooltipY));
-                    prevWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
 
-                    prevTooltipBottom -= prevTooltipHeight + space;
+                    prevWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
+                    prevTooltipBottom -= prevTooltipHeight + listSpacing;
                 }
+                context.getMatrices().push();
+                context.getMatrices().translate(0, 0, 1000);
+
+                int shadowHeight = 6;
+                int textureSize = 256;
+
+                int textureRegionLeft = PAGE_OFFSET_X + shadowHeight;
+                int textureRegionWidth = PAGE_WIDTH - textureRegionLeft;
+
+                int textureRegionHeaderTop = 0;
+                int textureRegionHeaderHeight = headerHeight + shadowHeight;
+
+                int textureRegionFooterHeight = footerHeight + shadowHeight;
+                int textureRegionFooterTop = WINDOW_HEIGHT - textureRegionFooterHeight;
+
+                context.drawTexture(
+                    RenderLayer::getGuiTextured,
+                    WINDOW_TEXTURE,
+                    headerLeft,
+                    headerTop,
+                    textureRegionLeft,
+                    textureRegionHeaderTop,
+                    headerWidth,
+                    headerHeight,
+                    textureRegionWidth,
+                    textureRegionHeaderHeight,
+                    textureSize,
+                    textureSize
+                );
+                context.drawTexture(
+                    RenderLayer::getGuiTextured,
+                    WINDOW_TEXTURE,
+                    footerLeft,
+                    footerTop,
+                    textureRegionLeft,
+                    textureRegionFooterTop,
+                    footerWidth,
+                    footerHeight,
+                    textureRegionWidth,
+                    textureRegionFooterHeight,
+                    textureSize,
+                    textureSize
+                );
+                context.getMatrices().pop();
             }
             ci.cancel();
         }

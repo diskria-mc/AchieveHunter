@@ -1,13 +1,22 @@
 accessWidener v2 named
 
+accessible field net/minecraft/client/gui/screen/advancement/AdvancementWidget x I
+accessible field net/minecraft/client/gui/screen/advancement/AdvancementWidget y I
 accessible field net/minecraft/client/gui/screen/advancement/AdvancementWidget advancement Lnet/minecraft/advancement/PlacedAdvancement;
 accessible field net/minecraft/client/gui/screen/advancement/AdvancementWidget tab Lnet/minecraft/client/gui/screen/advancement/AdvancementTab;
 accessible field net/minecraft/client/gui/screen/advancement/AdvancementWidget display Lnet/minecraft/advancement/AdvancementDisplay;
 accessible field net/minecraft/client/gui/screen/advancement/AdvancementWidget progress Lnet/minecraft/advancement/AdvancementProgress;
-accessible field net/minecraft/client/gui/screen/advancement/AdvancementWidget x I
-accessible field net/minecraft/client/gui/screen/advancement/AdvancementWidget y I
+
 accessible field net/minecraft/client/gui/screen/advancement/AdvancementTab originX D
 accessible field net/minecraft/client/gui/screen/advancement/AdvancementTab originY D
-accessible field net/minecraft/client/network/ClientAdvancementManager advancementProgresses Ljava/util/Map;
+
+accessible field net/minecraft/client/gui/screen/advancement/AdvancementsScreen PAGE_OFFSET_X I
+accessible field net/minecraft/client/gui/screen/advancement/AdvancementsScreen PAGE_OFFSET_Y I
+accessible field net/minecraft/client/gui/screen/advancement/AdvancementsScreen WINDOW_TEXTURE Lnet/minecraft/util/Identifier;
+
 accessible field net/minecraft/advancement/AdvancementProgress requirements Lnet/minecraft/advancement/AdvancementRequirements;
 accessible method net/minecraft/advancement/AdvancementProgress countObtainedRequirements ()I
+
+accessible field net/minecraft/client/network/ClientAdvancementManager advancementProgresses Ljava/util/Map;
+
+accessible method net/minecraft/client/gui/DrawContext drawTexturedQuad (Ljava/util/function/Function;Lnet/minecraft/util/Identifier;IIIIFFFFI)V
