@@ -1,6 +1,8 @@
 package com.diskree.advancementsexplorer.injection.mixin;
 
 import com.diskree.advancementsexplorer.Constants;
+import com.diskree.advancementsexplorer.gui.AdvancementCriteriaListWidget;
+import com.diskree.advancementsexplorer.gui.AdvancementCriterion;
 import com.diskree.advancementsexplorer.injection.extension.AdvancementWidgetExtension;
 import com.diskree.advancementsexplorer.injection.extension.AdvancementsScreenExtension;
 import com.diskree.advancementsexplorer.util.AdvancementsScreenState;
@@ -14,6 +16,7 @@ import net.minecraft.client.gui.screen.advancement.AdvancementTab;
 import net.minecraft.client.gui.screen.advancement.AdvancementWidget;
 import net.minecraft.client.gui.screen.advancement.AdvancementsScreen;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.gui.widget.ThreePartsLayoutWidget;
 import net.minecraft.client.network.ClientAdvancementManager;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.item.ItemGroups;
@@ -40,7 +43,7 @@ import static net.minecraft.client.gui.widget.EntryListWidget.INWORLD_MENU_LIST_
 import static net.minecraft.client.gui.widget.EntryListWidget.MENU_LIST_BACKGROUND_TEXTURE;
 
 @Mixin(AdvancementsScreen.class)
-public class AdvancementsScreenMixin extends Screen implements AdvancementsScreenExtension {
+public abstract class AdvancementsScreenMixin extends Screen implements AdvancementsScreenExtension {
 
     @Unique
     private static final Text SEARCH_TITLE = Text.translatable("gui.recipebook.search_hint");
@@ -71,6 +74,12 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
 
     @Unique
     private static final int SEARCH_FIELD_TEXT_LEFT_OFFSET = 2;
+
+    @Unique
+    private static final int CRITERIA_LIST_WIDGET_WIDTH = 109;
+
+    @Unique
+    private static final int CRITERIA_LIST_MARGIN = 12;
 
     @Unique
     private static final List<AdvancementFrame> FRAME_TYPE_PRIORITY = Arrays.asList(
@@ -145,21 +154,56 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
     @Unique
     private TextFieldWidget advancementsSearchField;
 
+    @Unique
+    private AdvancementCriteriaListWidget unobtainedCriteriaListWidget;
+
+    @Unique
+    private AdvancementCriteriaListWidget obtainedCriteriaListWidget;
+
     protected AdvancementsScreenMixin(Text title) {
         super(title);
     }
 
     @Unique
-    private void openInfo() {
-        if (focusedAdvancementWidget == null) {
+    private void setCurrentAdvancementIndex(int advancementIndex) {
+        List<PlacedAdvancement> advancementsList = getAdvancementsList();
+        if (currentAdvancementIndex == advancementIndex ||
+            advancementIndex < 0 ||
+            advancementIndex >= advancementsList.size()
+        ) {
             return;
         }
-        currentAdvancementIndex = getAdvancementsList().indexOf(focusedPlacedAdvancement);
-        if (currentAdvancementIndex == -1) {
-            return;
+        currentAdvancementIndex = advancementIndex;
+        AdvancementEntry advancementEntry = advancementsList.get(currentAdvancementIndex).getAdvancementEntry();
+        AdvancementProgress progress = advancementHandler.advancementProgresses.get(advancementEntry);
+        List<AdvancementCriterion> unobtainedCriteria = new ArrayList<>();
+        List<AdvancementCriterion> obtainedCriteria = new ArrayList<>();
+        for (List<String> requirement : advancementEntry.value().requirements().requirements()) {
+            if (requirement.isEmpty()) {
+                continue;
+            }
+            boolean isAnyObtained = false;
+            for (String criterionName : requirement) {
+                if (progress.isCriterionObtained(criterionName)) {
+                    isAnyObtained = true;
+                    break;
+                }
+            }
+            String preferredCriterionName = requirement.size() == 1
+                ? requirement.getFirst()
+                : Collections.min(requirement);
+            AdvancementCriterion criterion = new AdvancementCriterion(
+                Text.of(preferredCriterionName),
+                null
+            );
+            if (isAnyObtained) {
+                obtainedCriteria.add(criterion);
+            } else {
+                unobtainedCriteria.add(criterion);
+            }
         }
-        screenState = AdvancementsScreenState.OPENING_INFO;
-        tooltipTransitionProgress = 0.0f;
+        unobtainedCriteriaListWidget.setCriteria(unobtainedCriteria);
+        obtainedCriteriaListWidget.setCriteria(obtainedCriteria);
     }
 
     @Unique
@@ -285,6 +329,7 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         return widget;
     }
 
+    @SuppressWarnings("SameParameterValue")
     @Unique
     private void renderDarkeningSection(DrawContext context, int x, int y, int width, int height) {
         if (client == null) {
@@ -354,16 +399,34 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
 
     @Unique
     private int getCenterTooltipY(@NotNull AdvancementWidgetExtension advancementWidgetExtension) {
-        int listContainerHeight = height;
-        int headerHeight = PAGE_OFFSET_Y;
-        int footerHeight = PAGE_OFFSET_X;
+        int listHeight = height - PAGE_OFFSET_Y - PAGE_OFFSET_X;
+        int listCenterY = PAGE_OFFSET_Y + listHeight / 2;
 
-        int listHeight = listContainerHeight - headerHeight - footerHeight;
-        int listCenterY = headerHeight + listHeight / 2;
+        int tooltipHeight = advancementWidgetExtension.advancementsexplorer$getTooltipHeight(true);
+        return listCenterY - tooltipHeight / 2 - Constants.ADVANCEMENT_FRAME_OVERHANG;
+    }
 
-        int centerTooltipWidth = advancementWidgetExtension.advancementsexplorer$getTooltipWidth();
-        int centerTooltipHeight = advancementWidgetExtension.advancementsexplorer$getTooltipHeight(true);
-        return listCenterY - centerTooltipHeight / 2 - Constants.ADVANCEMENT_FRAME_OVERHANG;
+    @Unique
+    private int getCriteriaListY() {
+        return PAGE_OFFSET_Y + CRITERIA_LIST_MARGIN;
+    }
+
+    @Unique
+    private int getCriteriaListHeight() {
+        int footerTop = height - PAGE_OFFSET_X;
+        int criteriaSectionTop = PAGE_OFFSET_Y + CRITERIA_LIST_MARGIN;
+        int criteriaSectionBottom = footerTop - CRITERIA_LIST_MARGIN;
+        return criteriaSectionBottom - criteriaSectionTop;
+    }
+
+    @Unique
+    private int getCriteriaListX(boolean isObtained) {
+        int decrement = CRITERIA_LIST_MARGIN + obtainedCriteriaListWidget.getWidth();
+        int result = width - decrement;
+        if (!isObtained) {
+            result -= decrement;
+        }
+        return result;
     }
 
     @Override
@@ -396,7 +459,7 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
     }
 
     @Override
-    public void advancementssearch$resize(MinecraftClient client, int width, int height) {
+    public void advancementsexplorer$resize(MinecraftClient client, int width, int height) {
         if (advancementsSearchField != null) {
             String oldText = advancementsSearchField.getText();
             init(client, width, height);
@@ -430,7 +493,13 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
             double deltaX = mouseX - focusedAdvancementClickX;
             double deltaY = mouseY - focusedAdvancementClickY;
             if (Math.sqrt(deltaX * deltaX + deltaY * deltaY) < DRAG_THRESHOLD) {
-                openInfo();
+                if (focusedAdvancementWidget == null) {
+                    return;
+                }
+                setCurrentAdvancementIndex(getAdvancementsList().indexOf(focusedPlacedAdvancement));
+                screenState = AdvancementsScreenState.OPENING_INFO;
+                tooltipTransitionProgress = 0.0f;
+                advancementsSearchField.setFocused(true);
             }
             isFocusedAdvancementClicked = false;
         }
@@ -475,9 +544,20 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
     @Final
     private static Text ADVANCEMENTS_TEXT;
 
+    @Shadow
+    @Final
+    private ThreePartsLayoutWidget layout;
+
+    @Shadow
+    protected abstract void refreshWidgetPositions();
+
     @Inject(
         method = "init",
-        at = @At(value = "TAIL")
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/screen/advancement/AdvancementsScreen;refreshWidgetPositions()V",
+            shift = At.Shift.BEFORE
+        )
     )
     public void initInject(CallbackInfo ci) {
         advancementsSearchField = new TextFieldWidget(
@@ -492,7 +572,43 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         advancementsSearchField.setEditableColor(Colors.WHITE);
         advancementsSearchField.setFocusUnlocked(false);
         addSelectableChild(advancementsSearchField);
-        setInitialFocus(advancementsSearchField);
+
+        int criteriaListY = getCriteriaListY();
+        int criteriaListHeight = getCriteriaListHeight();
+        unobtainedCriteriaListWidget = new AdvancementCriteriaListWidget(
+            client,
+            CRITERIA_LIST_WIDGET_WIDTH,
+            criteriaListHeight,
+            criteriaListY,
+            16,
+            false
+        );
+        unobtainedCriteriaListWidget.visible = false;
+        addDrawableChild(unobtainedCriteriaListWidget);
+
+        obtainedCriteriaListWidget = new AdvancementCriteriaListWidget(
+            client,
+            CRITERIA_LIST_WIDGET_WIDTH,
+            criteriaListHeight,
+            criteriaListY,
+            16,
+            true
+        );
+        obtainedCriteriaListWidget.visible = false;
+        addDrawableChild(obtainedCriteriaListWidget);
+    }
+
+    @Inject(
+        method = "refreshWidgetPositions",
+        at = @At(value = "TAIL")
+    )
+    public void onRefreshWidgetPositions(CallbackInfo ci) {
+        unobtainedCriteriaListWidget.position(CRITERIA_LIST_WIDGET_WIDTH, getCriteriaListHeight(), 0);
+        unobtainedCriteriaListWidget.setX(getCriteriaListX(false));
+        unobtainedCriteriaListWidget.setY(getCriteriaListY());
+        obtainedCriteriaListWidget.position(CRITERIA_LIST_WIDGET_WIDTH, getCriteriaListHeight(), 0);
+        obtainedCriteriaListWidget.setX(getCriteriaListX(true));
+        obtainedCriteriaListWidget.setY(getCriteriaListY());
     }
 
     @Inject(
@@ -526,12 +642,17 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         } else {
             isFocusedAdvancementClicked = false;
         }
+        if (unobtainedCriteriaListWidget.isMouseOver(mouseX, mouseY)) {
+            unobtainedCriteriaListWidget.mouseClicked(mouseX, mouseY, button);
+        }
+        if (obtainedCriteriaListWidget.isMouseOver(mouseX, mouseY)) {
+            obtainedCriteriaListWidget.mouseClicked(mouseX, mouseY, button);
+        }
     }
 
     @Inject(
         method = "mouseDragged",
-        at = @At(value = "HEAD"),
-        cancellable = true
+        at = @At(value = "HEAD")
     )
     public void onMouseDragged(
         double mouseX,
@@ -541,8 +662,11 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         double deltaY,
         CallbackInfoReturnable<Boolean> cir
     ) {
-        if (screenState != AdvancementsScreenState.WINDOW_VISIBLE) {
-            cir.setReturnValue(false);
+        if (unobtainedCriteriaListWidget.isMouseOver(mouseX, mouseY)) {
+            unobtainedCriteriaListWidget.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+        }
+        if (obtainedCriteriaListWidget.isMouseOver(mouseX, mouseY)) {
+            obtainedCriteriaListWidget.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
         }
     }
 
@@ -558,13 +682,19 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         double verticalAmount,
         CallbackInfoReturnable<Boolean> cir
     ) {
-        if (horizontalAmount == 0 && verticalAmount != 0 && screenState == AdvancementsScreenState.INFO_VISIBLE) {
-            currentAdvancementIndex -= (int) verticalAmount;
-            currentAdvancementIndex = MathHelper.clamp(currentAdvancementIndex, 0, advancementsList.size() - 1);
+        if (horizontalAmount == 0 &&
+            verticalAmount != 0 &&
+            screenState == AdvancementsScreenState.INFO_VISIBLE &&
+            mouseX < getCriteriaListX(false) - CRITERIA_LIST_MARGIN
+        ) {
+            setCurrentAdvancementIndex(currentAdvancementIndex - (int) verticalAmount);
             cir.setReturnValue(false);
         }
-        if (screenState != AdvancementsScreenState.WINDOW_VISIBLE) {
-            cir.setReturnValue(false);
+        if (unobtainedCriteriaListWidget.isMouseOver(mouseX, mouseY)) {
+            unobtainedCriteriaListWidget.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+        }
+        if (obtainedCriteriaListWidget.isMouseOver(mouseX, mouseY)) {
+            obtainedCriteriaListWidget.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
         }
     }
 
@@ -577,10 +707,13 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         ),
         cancellable = true
     )
-    public void moveWindow(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    public void renderInfo(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (client == null) {
             return;
         }
+        unobtainedCriteriaListWidget.visible = obtainedCriteriaListWidget.visible =
+            screenState != AdvancementsScreenState.WINDOW_VISIBLE;
+
         if (screenState == AdvancementsScreenState.OPENING_INFO) {
             tooltipTransitionProgress += (delta / 20.0f) / ANIMATION_DURATION_SECONDS;
             if (tooltipTransitionProgress >= 1.0f) {
@@ -633,35 +766,21 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         if (screenState != AdvancementsScreenState.WINDOW_VISIBLE) {
             AdvancementWidget centerWidget = getListAdvancementWidget(currentAdvancementIndex);
             if (centerWidget instanceof AdvancementWidgetExtension centerAdvancementWidgetExtension) {
-                int listContainerWidth = width / 2;
-                int listContainerHeight = height;
-                int listContainerLeft = 0;
-                int listContainerTop = 0;
-                int listContainerRight = listContainerLeft + listContainerWidth;
-                int listContainerBottom = listContainerTop + listContainerHeight;
+                int centerTooltipY = getCenterTooltipY(centerAdvancementWidgetExtension);
 
-                int headerWidth = listContainerWidth;
-                int headerHeight = PAGE_OFFSET_Y;
-                int headerLeft = listContainerLeft;
-                int headerTop = listContainerTop;
-                int headerRight = headerLeft + headerWidth;
-                int headerBottom = headerTop + headerHeight;
+                int criteriaSectionWidth = obtainedCriteriaListWidget.getWidth();
+                int criteriaSectionTop = getCriteriaListY();
+                int criteriaSectionHeight = getCriteriaListHeight();
 
-                int footerWidth = listContainerWidth;
-                int footerHeight = PAGE_OFFSET_X;
-                int footerLeft = listContainerLeft;
-                int footerTop = listContainerBottom - footerHeight;
-                int footerRight = footerLeft + footerWidth;
-                int footerBottom = footerTop + footerHeight;
+                context.getMatrices().push();
+                context.getMatrices().translate(0, 0, 0);
 
-                int listWidth = listContainerWidth;
-                int listHeight = listContainerHeight - headerHeight - footerHeight;
-                int listLeft = listContainerLeft;
-                int listTop = headerBottom;
-                int listRight = listLeft + listWidth;
-                int listBottom = listTop + listHeight;
-                int listCenterX = listContainerWidth / 2;
-                int listCenterY = headerHeight + listHeight / 2;
+                int listWidth = getCriteriaListX(false) - CRITERIA_LIST_MARGIN;
+                listWidth--;
+                listWidth--;
+                int listHeight = height - PAGE_OFFSET_Y - PAGE_OFFSET_X;
+                int listCenterX = listWidth / 2;
+                int listCenterY = PAGE_OFFSET_Y + listHeight / 2;
 
                 int listSpacing = 10;
                 int listCenterExtraSpacing = 8;
@@ -669,38 +788,38 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
                 int centerTooltipWidth = centerAdvancementWidgetExtension.advancementsexplorer$getTooltipWidth();
                 int centerTooltipHeight = centerAdvancementWidgetExtension.advancementsexplorer$getTooltipHeight(true);
                 int centerTooltipX = listCenterX - centerTooltipWidth / 2;
-                int centerTooltipY = getCenterTooltipY(centerAdvancementWidgetExtension);
 
                 centerAdvancementWidgetExtension.advancementsexplorer$setX(centerTooltipX);
                 centerAdvancementWidgetExtension.advancementsexplorer$setY(centerTooltipY);
                 centerAdvancementWidgetExtension.advancementsexplorer$setCollapsed(false);
 
-                context.getMatrices().push();
-                context.getMatrices().translate(0, 0, 0);
                 int prevDarkeningSectionBottom = centerTooltipY - listCenterExtraSpacing + Constants.ADVANCEMENT_FRAME_OVERHANG;
                 int nextDarkeningSectionTop = centerTooltipY + centerTooltipHeight + listCenterExtraSpacing + Constants.ADVANCEMENT_FRAME_OVERHANG;
                 int darkeningHeight = centerTooltipHeight + listCenterExtraSpacing * 2;
                 renderDarkeningSection(
                     context,
-                    listContainerLeft,
-                    listContainerTop,
-                    listContainerWidth,
-                    prevDarkeningSectionBottom - listContainerTop
+                    0,
+                    0,
+                    listWidth,
+                    prevDarkeningSectionBottom
                 );
                 renderDarkeningSection(
                     context,
-                    listContainerLeft,
+                    0,
                     nextDarkeningSectionTop,
-                    listContainerWidth,
-                    listContainerBottom - nextDarkeningSectionTop
+                    listWidth,
+                    height - nextDarkeningSectionTop
                 );
-                context.drawVerticalLine(listContainerLeft + listContainerWidth, listContainerTop - 1, prevDarkeningSectionBottom - 1, 0xbf000000);
-                context.drawVerticalLine(listContainerLeft + listContainerWidth + 1, listContainerTop - 1, prevDarkeningSectionBottom - 1, 0x33ffffff);
-                context.drawHorizontalLine(listContainerLeft + listContainerWidth, listContainerLeft + listContainerWidth + 1, prevDarkeningSectionBottom - 1, 0x33ffffff);
 
-                context.drawVerticalLine(listContainerWidth, nextDarkeningSectionTop, listContainerBottom, 0xbf000000);
-                context.drawVerticalLine(listContainerWidth + 1, nextDarkeningSectionTop, listContainerBottom, 0x33ffffff);
-                context.drawHorizontalLine(listContainerLeft + listContainerWidth, listContainerLeft + listContainerWidth + 1, nextDarkeningSectionTop, 0x33ffffff);
+                int grayLineColor = 0x33ffffff;
+                int blackLineColor = 0xbf000000;
+                context.drawVerticalLine(listWidth, -1, prevDarkeningSectionBottom - 1, blackLineColor);
+                context.drawVerticalLine(listWidth + 1, -1, prevDarkeningSectionBottom - 1, grayLineColor);
+                context.drawHorizontalLine(listWidth, listWidth + 1, prevDarkeningSectionBottom - 1, grayLineColor);
+
+                context.drawVerticalLine(listWidth, nextDarkeningSectionTop, height, blackLineColor);
+                context.drawVerticalLine(listWidth + 1, nextDarkeningSectionTop, height, grayLineColor);
+                context.drawHorizontalLine(listWidth, listWidth + 1, nextDarkeningSectionTop, grayLineColor);
 
                 context.getMatrices().pop();
                 if (screenState == AdvancementsScreenState.INFO_VISIBLE) {
@@ -709,7 +828,7 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
 
                 int nextIndex = currentAdvancementIndex;
                 float nextTooltipTop = centerTooltipY + centerTooltipHeight + listSpacing + listCenterExtraSpacing;
-                while (nextTooltipTop <= listBottom) {
+                while (nextTooltipTop <= height - PAGE_OFFSET_X) {
                     nextIndex++;
                     AdvancementWidget nextWidget = getListAdvancementWidget(nextIndex);
                     if (!(nextWidget instanceof AdvancementWidgetExtension nextAdvancementWidgetExtension)) {
@@ -730,7 +849,7 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
 
                 int prevIndex = currentAdvancementIndex;
                 float prevTooltipBottom = centerTooltipY - listSpacing - listCenterExtraSpacing;
-                while (prevTooltipBottom >= listTop) {
+                while (prevTooltipBottom >= PAGE_OFFSET_Y) {
                     prevIndex--;
                     AdvancementWidget prevWidget = getListAdvancementWidget(prevIndex);
                     if (!(prevWidget instanceof AdvancementWidgetExtension prevAdvancementWidgetExtension)) {
@@ -756,18 +875,18 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
                 int windowTextureSize = 256;
                 int textureRegionLeft = PAGE_OFFSET_X + shadowHeight;
                 int textureRegionWidth = PAGE_WIDTH - textureRegionLeft;
-                int textureRegionHeaderHeight = headerHeight + shadowHeight;
+                int textureRegionHeaderHeight = PAGE_OFFSET_Y + shadowHeight;
                 int textureRegionHeaderTop = 0;
-                int textureRegionFooterHeight = footerHeight + shadowHeight;
+                int textureRegionFooterHeight = PAGE_OFFSET_X + shadowHeight;
                 int textureRegionFooterTop = WINDOW_HEIGHT - textureRegionFooterHeight;
                 context.drawTexture(
                     RenderLayer::getGuiTextured,
                     WINDOW_TEXTURE,
-                    headerLeft,
-                    headerTop,
+                    0,
+                    0,
                     textureRegionLeft,
                     textureRegionHeaderTop,
-                    headerWidth,
+                    width,
                     textureRegionHeaderHeight,
                     textureRegionWidth,
                     textureRegionHeaderHeight,
@@ -778,14 +897,14 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
                 context.drawText(
                     textRenderer,
                     advancementsSearchField.getText().isEmpty() ? ADVANCEMENTS_TEXT : SEARCH_TITLE,
-                    headerLeft + 6,
-                    headerTop + 6,
+                    6,
+                    6,
                     4210752,
                     false
                 );
 
-                int advancementsSearchFieldX = headerRight - SEARCH_FIELD_WIDTH - 3;
-                int advancementsSearchFieldY = (headerHeight - SEARCH_FIELD_HEIGHT) / 2 + 1;
+                int advancementsSearchFieldX = width - SEARCH_FIELD_WIDTH - 3;
+                int advancementsSearchFieldY = (PAGE_OFFSET_Y - SEARCH_FIELD_HEIGHT) / 2 + 1;
                 context.drawTexture(
                     RenderLayer::getGuiTextured,
                     ItemGroups.ITEM_SEARCH_TAB_TEXTURE_ID,
@@ -805,11 +924,11 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
                 context.drawTexture(
                     RenderLayer::getGuiTextured,
                     WINDOW_TEXTURE,
-                    footerLeft,
-                    footerTop - shadowHeight,
+                    0,
+                    height - PAGE_OFFSET_X - shadowHeight,
                     textureRegionLeft,
                     textureRegionFooterTop,
-                    footerWidth,
+                    width,
                     textureRegionFooterHeight,
                     textureRegionWidth,
                     textureRegionFooterHeight,
@@ -867,6 +986,8 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
             if (screenState == AdvancementsScreenState.INFO_VISIBLE) {
                 screenState = AdvancementsScreenState.WINDOW_VISIBLE;
+                advancementsSearchField.setText("");
+                advancementsSearchField.setFocused(false);
                 cir.setReturnValue(true);
             } else if (screenState == AdvancementsScreenState.OPENING_INFO) {
                 cir.setReturnValue(true);
@@ -874,7 +995,7 @@ public class AdvancementsScreenMixin extends Screen implements AdvancementsScree
         } else if (screenState == AdvancementsScreenState.OPENING_INFO) {
             cir.setReturnValue(true);
         }
-        if (screenState == AdvancementsScreenState.INFO_VISIBLE && advancementsSearchField != null) {
+        if (screenState == AdvancementsScreenState.INFO_VISIBLE) {
             String oldText = advancementsSearchField.getText();
             if (advancementsSearchField.keyPressed(keyCode, scanCode, modifiers)) {
                 if (!Objects.equals(oldText, advancementsSearchField.getText())) {

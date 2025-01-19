@@ -13,5 +13,5 @@ public interface AdvancementsScreenExtension {
 
     boolean advancementsexplorer$charTyped(char chr, int modifiers);
 
-    void advancementssearch$resize(MinecraftClient client, int width, int height);
+    void advancementsexplorer$resize(MinecraftClient client, int width, int height);
 }
