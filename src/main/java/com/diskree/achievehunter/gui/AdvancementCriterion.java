@@ -1,4 +1,4 @@
-package com.diskree.advancementsexplorer.gui;
+package com.diskree.achievehunter.gui;
 
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;

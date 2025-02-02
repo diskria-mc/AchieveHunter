@@ -1,8 +1,8 @@
-package com.diskree.advancementsexplorer.injection.mixin;
+package com.diskree.achievehunter.injection.mixin;
 
-import com.diskree.advancementsexplorer.Constants;
-import com.diskree.advancementsexplorer.injection.extension.AdvancementWidgetExtension;
-import com.diskree.advancementsexplorer.util.AdvancementWidgetRenderPriority;
+import com.diskree.achievehunter.Constants;
+import com.diskree.achievehunter.injection.extension.AdvancementWidgetExtension;
+import com.diskree.achievehunter.util.AdvancementWidgetRenderPriority;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -64,32 +64,32 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
     }
 
     @Override
-    public boolean advancementsexplorer$isTooltipMirroredHorizontally() {
+    public boolean achievehunter$isTooltipMirroredHorizontally() {
         return isTooltipMirroredHorizontally;
     }
 
     @Override
-    public boolean advancementsexplorer$isTooltipMirroredVertically() {
+    public boolean achievehunter$isTooltipMirroredVertically() {
         return isTooltipMirroredVertically;
     }
 
     @Override
-    public void advancementsexplorer$setForceMirrorTooltipHorizontally(Boolean forceMirrorTooltipHorizontally) {
+    public void achievehunter$setForceMirrorTooltipHorizontally(Boolean forceMirrorTooltipHorizontally) {
         this.forceMirrorTooltipHorizontally = forceMirrorTooltipHorizontally;
     }
 
     @Override
-    public void advancementsexplorer$setForceMirrorTooltipVertically(Boolean forceMirrorTooltipVertically) {
+    public void achievehunter$setForceMirrorTooltipVertically(Boolean forceMirrorTooltipVertically) {
         this.forceMirrorTooltipVertically = forceMirrorTooltipVertically;
     }
 
     @Override
-    public int advancementsexplorer$getTooltipWidth() {
+    public int achievehunter$getTooltipWidth() {
         return width - 1;
     }
 
     @Override
-    public int advancementsexplorer$getTooltipHeight(boolean withDescription) {
+    public int achievehunter$getTooltipHeight(boolean withDescription) {
         if (tooltipHeight == Integer.MIN_VALUE || tooltipDescriptionHeight == Integer.MIN_VALUE) {
             shouldOnlyCalculateTooltipHeightOnNextRender = true;
             drawTooltip(null, 0, 0, 1.0f, 0, 0);
@@ -103,27 +103,27 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
     }
 
     @Override
-    public void advancementsexplorer$setX(int x) {
+    public void achievehunter$setX(int x) {
         this.x = x;
     }
 
     @Override
-    public void advancementsexplorer$setY(int y) {
+    public void achievehunter$setY(int y) {
         this.y = y;
     }
 
     @Override
-    public void advancementsexplorer$setHorizontallySwapAnimationProgress(float horizontallySwapAnimationProgress) {
+    public void achievehunter$setHorizontallySwapAnimationProgress(float horizontallySwapAnimationProgress) {
         this.horizontallySwapAnimationProgress = horizontallySwapAnimationProgress;
     }
 
     @Override
-    public void advancementsexplorer$setVerticallySwapAnimationProgress(float verticallySwapAnimationProgress) {
+    public void achievehunter$setVerticallySwapAnimationProgress(float verticallySwapAnimationProgress) {
         this.verticallySwapAnimationProgress = verticallySwapAnimationProgress;
     }
 
     @Override
-    public void advancementsexplorer$setCollapsed(boolean isCollapsed) {
+    public void achievehunter$setCollapsed(boolean isCollapsed) {
         this.isCollapsed = isCollapsed;
         tooltipHeight = tooltipDescriptionHeight = Integer.MIN_VALUE;
     }
@@ -261,7 +261,7 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
         if (verticallySwapAnimationProgress != 0.0f) {
             progressBarY = MathHelper.lerp(
                 verticallySwapAnimationProgress,
-                originY + y + advancementsexplorer$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 3,
+                originY + y + achievehunter$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 3,
                 progressBarY
             );
             shouldApplyRenderPriority = true;
@@ -302,7 +302,7 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
         if (verticallySwapAnimationProgress != 0.0f) {
             partY = MathHelper.lerp(
                 verticallySwapAnimationProgress,
-                originY + y + advancementsexplorer$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 3,
+                originY + y + achievehunter$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 3,
                 partY
             );
             shouldApplyRenderPriority = true;
@@ -356,7 +356,7 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
         if (horizontallySwapAnimationProgress != 0.0f) {
             frameX = MathHelper.lerp(
                 horizontallySwapAnimationProgress,
-                originX + x + advancementsexplorer$getTooltipWidth() - Constants.ADVANCEMENT_FRAME_SIZE - 3,
+                originX + x + achievehunter$getTooltipWidth() - Constants.ADVANCEMENT_FRAME_SIZE - 3,
                 frameX
             );
             shouldApplyRenderPriority = true;
@@ -364,7 +364,7 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
         if (verticallySwapAnimationProgress != 0.0f) {
             frameY = MathHelper.lerp(
                 verticallySwapAnimationProgress,
-                originY + y + advancementsexplorer$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 3,
+                originY + y + achievehunter$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 3,
                 frameY
             );
             shouldApplyRenderPriority = true;
@@ -410,7 +410,7 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
         if (verticallySwapAnimationProgress != 0.0f) {
             titleY = MathHelper.lerp(
                 verticallySwapAnimationProgress,
-                originY + y + advancementsexplorer$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 3 + 8,
+                originY + y + achievehunter$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 3 + 8,
                 titleY
             );
             shouldApplyRenderPriority = true;
@@ -449,14 +449,14 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
         if (horizontallySwapAnimationProgress != 0.0f) {
             progressTextX = MathHelper.lerp(
                 horizontallySwapAnimationProgress,
-                originX + x + advancementsexplorer$getTooltipWidth() - progressTextWidth - Constants.ADVANCEMENT_FRAME_SIZE - 6,
+                originX + x + achievehunter$getTooltipWidth() - progressTextWidth - Constants.ADVANCEMENT_FRAME_SIZE - 6,
                 progressTextX
             );
         }
         if (verticallySwapAnimationProgress != 0.0f) {
             progressTextY = MathHelper.lerp(
                 verticallySwapAnimationProgress,
-                originY + y + advancementsexplorer$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 3 + 8,
+                originY + y + achievehunter$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 3 + 8,
                 progressTextY
             );
             shouldApplyRenderPriority = true;
@@ -492,7 +492,7 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
         if (horizontallySwapAnimationProgress != 0.0f) {
             itemX = MathHelper.lerp(
                 horizontallySwapAnimationProgress,
-                originX + x + advancementsexplorer$getTooltipWidth() - Constants.ADVANCEMENT_FRAME_SIZE - 3 + 5,
+                originX + x + achievehunter$getTooltipWidth() - Constants.ADVANCEMENT_FRAME_SIZE - 3 + 5,
                 itemX
             );
             shouldApplyRenderPriority = true;
@@ -500,7 +500,7 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
         if (verticallySwapAnimationProgress != 0.0f) {
             itemY = MathHelper.lerp(
                 verticallySwapAnimationProgress,
-                originY + y + advancementsexplorer$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 5 + 3,
+                originY + y + achievehunter$getTooltipHeight(true) - Constants.ADVANCEMENT_FRAME_SIZE + 5 + 3,
                 itemY
             );
             shouldApplyRenderPriority = true;

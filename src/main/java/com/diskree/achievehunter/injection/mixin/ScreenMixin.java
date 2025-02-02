@@ -1,6 +1,6 @@
-package com.diskree.advancementsexplorer.injection.mixin;
+package com.diskree.achievehunter.injection.mixin;
 
-import com.diskree.advancementsexplorer.injection.extension.AdvancementsScreenExtension;
+import com.diskree.achievehunter.injection.extension.AdvancementsScreenExtension;
 import net.minecraft.client.gui.screen.Screen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -17,7 +17,7 @@ public class ScreenMixin {
     private void tickBridge(CallbackInfo ci) {
         Screen screen = (Screen) (Object) this;
         if (screen instanceof AdvancementsScreenExtension advancementsScreenExtension) {
-            advancementsScreenExtension.advancementsexplorer$tick();
+            advancementsScreenExtension.achievehunter$tick();
         }
     }
 }

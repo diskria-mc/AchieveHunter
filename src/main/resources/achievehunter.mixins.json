@@ -1,6 +1,6 @@
 {
   "required": true,
-  "package": "com.diskree.advancementsexplorer.injection.mixin",
+  "package": "com.diskree.achievehunter.injection.mixin",
   "compatibilityLevel": "JAVA_21",
   "injectors": {
     "defaultRequire": 1

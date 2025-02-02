@@ -1,4 +1,4 @@
-package com.diskree.advancementsexplorer.util;
+package com.diskree.achievehunter.util;
 
 public enum AdvancementWidgetRenderPriority {
     DESCRIPTION,

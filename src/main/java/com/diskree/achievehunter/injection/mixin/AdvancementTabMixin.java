@@ -1,6 +1,6 @@
-package com.diskree.advancementsexplorer.injection.mixin;
+package com.diskree.achievehunter.injection.mixin;
 
-import com.diskree.advancementsexplorer.injection.extension.AdvancementsScreenExtension;
+import com.diskree.achievehunter.injection.extension.AdvancementsScreenExtension;
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.advancement.PlacedAdvancement;
 import net.minecraft.client.gui.DrawContext;
@@ -51,7 +51,7 @@ public class AdvancementTabMixin {
         if (screen instanceof AdvancementsScreenExtension advancementsScreenExtension &&
             !root.getAdvancementEntry().id().equals(ADVANCEMENTS_SEARCH_TAB_ROOT_ADVANCEMENT_ID)
         ) {
-            advancementsScreenExtension.advancementsexplorer$setFocusedAdvancement(advancementWidget);
+            advancementsScreenExtension.achievehunter$setFocusedAdvancement(advancementWidget);
         }
     }
 
@@ -75,7 +75,7 @@ public class AdvancementTabMixin {
         if (!shouldShowTooltip && screen instanceof AdvancementsScreenExtension advancementsScreenExtension &&
             !root.getAdvancementEntry().id().equals(ADVANCEMENTS_SEARCH_TAB_ROOT_ADVANCEMENT_ID)
         ) {
-            advancementsScreenExtension.advancementsexplorer$setFocusedAdvancement(null);
+            advancementsScreenExtension.achievehunter$setFocusedAdvancement(null);
         }
     }
 }

@@ -3,7 +3,7 @@
 	"id": "${modId}",
 	"version": "${modVersion}",
 	"name": "${modName}",
-	"description": "A client-side mod that adds an interface for viewing unobtained advancements, with remaining criteria, and also features a completion tracker.",
+	"description": "",
 	"authors": [
 		"${author}"
 	],
@@ -11,20 +11,20 @@
 		"sources": "${repoUrl}"
 	},
 	"license": "MIT",
-	"icon": "assets/advancementsexplorer/icon.png",
+	"icon": "assets/achievehunter/icon.png",
 	"environment": "client",
 	"entrypoints": {
 		"client": [
-			"com.diskree.advancementsexplorer.AdvancementsExplorerMod"
+			"com.diskree.achievehunter.AchieveHunterMod"
 		]
 	},
 	"mixins": [
-		"advancementsexplorer.mixins.json"
+		"achievehunter.mixins.json"
 	],
 	"depends": {
 		"java": ">=${minJavaVersion}",
 		"minecraft": ">=${minMinecraftVersion}",
 		"fabricloader": ">=${minLoaderVersion}"
 	},
-	"accessWidener": "advancementsexplorer.accesswidener"
+	"accessWidener": "achievehunter.accesswidener"
 }

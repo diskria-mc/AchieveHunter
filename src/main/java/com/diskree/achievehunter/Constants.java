@@ -1,4 +1,4 @@
-package com.diskree.advancementsexplorer;
+package com.diskree.achievehunter;
 
 public class Constants {
 

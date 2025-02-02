@@ -1,4 +1,4 @@
-package com.diskree.advancementsexplorer.gui;
+package com.diskree.achievehunter.gui;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -35,8 +35,8 @@ public class AdvancementCriteriaListWidget extends EntryListWidget<AdvancementCr
         Text text = Text
             .translatable(
                 isObtained
-                    ? "advancementsexplorer.criteria_header.obtained"
-                    : "advancementsexplorer.criteria_header.unobtained"
+                    ? "achievehunter.criteria_header.obtained"
+                    : "achievehunter.criteria_header.unobtained"
             )
             .formatted(Formatting.UNDERLINE, Formatting.BOLD);
         context.drawTextWithShadow(

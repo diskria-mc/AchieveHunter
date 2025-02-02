@@ -1,11 +1,11 @@
-package com.diskree.advancementsexplorer.injection.mixin;
+package com.diskree.achievehunter.injection.mixin;
 
-import com.diskree.advancementsexplorer.Constants;
-import com.diskree.advancementsexplorer.gui.AdvancementCriteriaListWidget;
-import com.diskree.advancementsexplorer.gui.AdvancementCriterion;
-import com.diskree.advancementsexplorer.injection.extension.AdvancementWidgetExtension;
-import com.diskree.advancementsexplorer.injection.extension.AdvancementsScreenExtension;
-import com.diskree.advancementsexplorer.util.AdvancementsScreenState;
+import com.diskree.achievehunter.Constants;
+import com.diskree.achievehunter.gui.AdvancementCriteriaListWidget;
+import com.diskree.achievehunter.gui.AdvancementCriterion;
+import com.diskree.achievehunter.injection.extension.AdvancementWidgetExtension;
+import com.diskree.achievehunter.injection.extension.AdvancementsScreenExtension;
+import com.diskree.achievehunter.util.AdvancementsScreenState;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.advancement.*;
@@ -323,8 +323,8 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
         if (!(widget instanceof AdvancementWidgetExtension advancementWidgetExtension)) {
             return null;
         }
-        advancementWidgetExtension.advancementsexplorer$setForceMirrorTooltipHorizontally(false);
-        advancementWidgetExtension.advancementsexplorer$setForceMirrorTooltipVertically(false);
+        advancementWidgetExtension.achievehunter$setForceMirrorTooltipHorizontally(false);
+        advancementWidgetExtension.achievehunter$setForceMirrorTooltipVertically(false);
         widget.setProgress(advancementHandler.advancementProgresses.get(placedAdvancement.getAdvancementEntry()));
         return widget;
     }
@@ -402,7 +402,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
         int listHeight = height - PAGE_OFFSET_Y - PAGE_OFFSET_X;
         int listCenterY = PAGE_OFFSET_Y + listHeight / 2;
 
-        int tooltipHeight = advancementWidgetExtension.advancementsexplorer$getTooltipHeight(true);
+        int tooltipHeight = advancementWidgetExtension.achievehunter$getTooltipHeight(true);
         return listCenterY - tooltipHeight / 2 - Constants.ADVANCEMENT_FRAME_OVERHANG;
     }
 
@@ -430,7 +430,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
     }
 
     @Override
-    public void advancementsexplorer$tick() {
+    public void achievehunter$tick() {
         if (focusedAdvancementReleaseClickTimer > 0) {
             focusedAdvancementReleaseClickTimer--;
             if (focusedAdvancementReleaseClickTimer == 0) {
@@ -442,7 +442,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
     }
 
     @Override
-    public boolean advancementsexplorer$charTyped(char chr, int modifiers) {
+    public boolean achievehunter$charTyped(char chr, int modifiers) {
         if (screenState == AdvancementsScreenState.OPENING_INFO) {
             return true;
         }
@@ -459,7 +459,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
     }
 
     @Override
-    public void advancementsexplorer$resize(MinecraftClient client, int width, int height) {
+    public void achievehunter$resize(MinecraftClient client, int width, int height) {
         if (advancementsSearchField != null) {
             String oldText = advancementsSearchField.getText();
             init(client, width, height);
@@ -468,7 +468,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
     }
 
     @Override
-    public void advancementsexplorer$setFocusedAdvancement(@Nullable AdvancementWidget advancementWidget) {
+    public void achievehunter$setFocusedAdvancement(@Nullable AdvancementWidget advancementWidget) {
         PlacedAdvancement placedAdvancement = advancementWidget != null ? advancementWidget.advancement : null;
         if (screenState != AdvancementsScreenState.WINDOW_VISIBLE &&
             Objects.equals(focusedPlacedAdvancement, placedAdvancement)
@@ -485,7 +485,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
     }
 
     @Override
-    public void advancementsexplorer$onMouseReleased(double mouseX, double mouseY, int button) {
+    public void achievehunter$onMouseReleased(double mouseX, double mouseY, int button) {
         if (focusedPlacedAdvancement != null &&
             isFocusedAdvancementClicked &&
             button == GLFW.GLFW_MOUSE_BUTTON_LEFT
@@ -731,14 +731,14 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                 );
                 transitionAdvancementWidget.setProgress(focusedAdvancementWidget.progress);
                 if (focusedAdvancementWidget instanceof AdvancementWidgetExtension advancementWidgetExtension) {
-                    int tooltipWidth = advancementWidgetExtension.advancementsexplorer$getTooltipWidth();
-                    int tooltipHeight = advancementWidgetExtension.advancementsexplorer$getTooltipHeight(true);
+                    int tooltipWidth = advancementWidgetExtension.achievehunter$getTooltipWidth();
+                    int tooltipHeight = advancementWidgetExtension.achievehunter$getTooltipHeight(true);
                     tooltipTransitionEndX = width / 4 - tooltipWidth / 2;
                     tooltipTransitionEndY = getCenterTooltipY(advancementWidgetExtension);
                     shouldHorizontallySwapTransitionTooltip =
-                        advancementWidgetExtension.advancementsexplorer$isTooltipMirroredHorizontally();
+                        advancementWidgetExtension.achievehunter$isTooltipMirroredHorizontally();
                     shouldVerticallySwapTransitionTooltip =
-                        advancementWidgetExtension.advancementsexplorer$isTooltipMirroredVertically();
+                        advancementWidgetExtension.achievehunter$isTooltipMirroredVertically();
                     tooltipTransitionStartX =
                         windowTreeX + MathHelper.floor(focusedAdvancementTab.originX) + focusedAdvancementWidget.x;
                     tooltipTransitionStartY =
@@ -755,10 +755,10 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                     }
                 }
                 if (transitionAdvancementWidget instanceof AdvancementWidgetExtension advancementWidgetExtension) {
-                    advancementWidgetExtension.advancementsexplorer$setForceMirrorTooltipHorizontally(false);
-                    advancementWidgetExtension.advancementsexplorer$setForceMirrorTooltipVertically(false);
-                    advancementWidgetExtension.advancementsexplorer$setX(tooltipTransitionStartX);
-                    advancementWidgetExtension.advancementsexplorer$setY(tooltipTransitionStartY);
+                    advancementWidgetExtension.achievehunter$setForceMirrorTooltipHorizontally(false);
+                    advancementWidgetExtension.achievehunter$setForceMirrorTooltipVertically(false);
+                    advancementWidgetExtension.achievehunter$setX(tooltipTransitionStartX);
+                    advancementWidgetExtension.achievehunter$setY(tooltipTransitionStartY);
                 }
                 focusedAdvancementWidget = null;
             }
@@ -785,13 +785,13 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                 int listSpacing = 10;
                 int listCenterExtraSpacing = 8;
 
-                int centerTooltipWidth = centerAdvancementWidgetExtension.advancementsexplorer$getTooltipWidth();
-                int centerTooltipHeight = centerAdvancementWidgetExtension.advancementsexplorer$getTooltipHeight(true);
+                int centerTooltipWidth = centerAdvancementWidgetExtension.achievehunter$getTooltipWidth();
+                int centerTooltipHeight = centerAdvancementWidgetExtension.achievehunter$getTooltipHeight(true);
                 int centerTooltipX = listCenterX - centerTooltipWidth / 2;
 
-                centerAdvancementWidgetExtension.advancementsexplorer$setX(centerTooltipX);
-                centerAdvancementWidgetExtension.advancementsexplorer$setY(centerTooltipY);
-                centerAdvancementWidgetExtension.advancementsexplorer$setCollapsed(false);
+                centerAdvancementWidgetExtension.achievehunter$setX(centerTooltipX);
+                centerAdvancementWidgetExtension.achievehunter$setY(centerTooltipY);
+                centerAdvancementWidgetExtension.achievehunter$setCollapsed(false);
 
                 int prevDarkeningSectionBottom = centerTooltipY - listCenterExtraSpacing + Constants.ADVANCEMENT_FRAME_OVERHANG;
                 int nextDarkeningSectionTop = centerTooltipY + centerTooltipHeight + listCenterExtraSpacing + Constants.ADVANCEMENT_FRAME_OVERHANG;
@@ -834,14 +834,14 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                     if (!(nextWidget instanceof AdvancementWidgetExtension nextAdvancementWidgetExtension)) {
                         break;
                     }
-                    nextAdvancementWidgetExtension.advancementsexplorer$setCollapsed(true);
-                    int nextTooltipWidth = nextAdvancementWidgetExtension.advancementsexplorer$getTooltipWidth();
-                    int nextTooltipHeight = nextAdvancementWidgetExtension.advancementsexplorer$getTooltipHeight(false);
+                    nextAdvancementWidgetExtension.achievehunter$setCollapsed(true);
+                    int nextTooltipWidth = nextAdvancementWidgetExtension.achievehunter$getTooltipWidth();
+                    int nextTooltipHeight = nextAdvancementWidgetExtension.achievehunter$getTooltipHeight(false);
                     int nextTooltipCenterX = nextTooltipWidth / 2;
                     int nextTooltipX = listCenterX - nextTooltipCenterX;
 
-                    nextAdvancementWidgetExtension.advancementsexplorer$setX(nextTooltipX);
-                    nextAdvancementWidgetExtension.advancementsexplorer$setY(MathHelper.floor(nextTooltipTop));
+                    nextAdvancementWidgetExtension.achievehunter$setX(nextTooltipX);
+                    nextAdvancementWidgetExtension.achievehunter$setY(MathHelper.floor(nextTooltipTop));
 
                     nextWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
                     nextTooltipTop += nextTooltipHeight + listSpacing;
@@ -855,15 +855,15 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                     if (!(prevWidget instanceof AdvancementWidgetExtension prevAdvancementWidgetExtension)) {
                         break;
                     }
-                    prevAdvancementWidgetExtension.advancementsexplorer$setCollapsed(true);
-                    int prevTooltipWidth = prevAdvancementWidgetExtension.advancementsexplorer$getTooltipWidth();
-                    int prevTooltipHeight = prevAdvancementWidgetExtension.advancementsexplorer$getTooltipHeight(false);
+                    prevAdvancementWidgetExtension.achievehunter$setCollapsed(true);
+                    int prevTooltipWidth = prevAdvancementWidgetExtension.achievehunter$getTooltipWidth();
+                    int prevTooltipHeight = prevAdvancementWidgetExtension.achievehunter$getTooltipHeight(false);
                     int prevTooltipCenterX = prevTooltipWidth / 2;
                     int prevTooltipX = listCenterX - prevTooltipCenterX;
                     float prevTooltipY = prevTooltipBottom - prevTooltipHeight;
 
-                    prevAdvancementWidgetExtension.advancementsexplorer$setX(prevTooltipX);
-                    prevAdvancementWidgetExtension.advancementsexplorer$setY(MathHelper.floor(prevTooltipY));
+                    prevAdvancementWidgetExtension.achievehunter$setX(prevTooltipX);
+                    prevAdvancementWidgetExtension.achievehunter$setY(MathHelper.floor(prevTooltipY));
 
                     prevWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
                     prevTooltipBottom -= prevTooltipHeight + listSpacing;
@@ -955,16 +955,16 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                 float newY = inverse * inverse * startY +
                     2.0f * inverse * easedProgress * middleY +
                     easedProgress * easedProgress * endY;
-                advancementWidgetExtension.advancementsexplorer$setX(MathHelper.floor(newX));
-                advancementWidgetExtension.advancementsexplorer$setY(MathHelper.floor(newY));
+                advancementWidgetExtension.achievehunter$setX(MathHelper.floor(newX));
+                advancementWidgetExtension.achievehunter$setY(MathHelper.floor(newY));
 
                 if (shouldHorizontallySwapTransitionTooltip) {
                     advancementWidgetExtension
-                        .advancementsexplorer$setHorizontallySwapAnimationProgress(tooltipTransitionProgress);
+                        .achievehunter$setHorizontallySwapAnimationProgress(tooltipTransitionProgress);
                 }
                 if (shouldVerticallySwapTransitionTooltip) {
                     advancementWidgetExtension
-                        .advancementsexplorer$setVerticallySwapAnimationProgress(tooltipTransitionProgress);
+                        .achievehunter$setVerticallySwapAnimationProgress(tooltipTransitionProgress);
                 }
                 transitionAdvancementWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
             }

@@ -1,6 +1,6 @@
-package com.diskree.advancementsexplorer.injection.mixin;
+package com.diskree.achievehunter.injection.mixin;
 
-import com.diskree.advancementsexplorer.injection.extension.AdvancementsScreenExtension;
+import com.diskree.achievehunter.injection.extension.AdvancementsScreenExtension;
 import net.minecraft.client.gui.ParentElement;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -21,7 +21,7 @@ public interface ParentElementMixin {
         CallbackInfoReturnable<Boolean> cir
     ) {
         if (this instanceof AdvancementsScreenExtension advancementsScreenExtension) {
-            advancementsScreenExtension.advancementsexplorer$onMouseReleased(mouseX, mouseY, button);
+            advancementsScreenExtension.achievehunter$onMouseReleased(mouseX, mouseY, button);
         }
     }
 
@@ -32,7 +32,7 @@ public interface ParentElementMixin {
     )
     private void onCharTypedInAdvancementsScreen(char chr, int modifiers, CallbackInfoReturnable<Boolean> cir) {
         if (this instanceof AdvancementsScreenExtension advancementsScreenExtension &&
-            advancementsScreenExtension.advancementsexplorer$charTyped(chr, modifiers)
+            advancementsScreenExtension.achievehunter$charTyped(chr, modifiers)
         ) {
             cir.setReturnValue(true);
         }
