@@ -9,6 +9,15 @@ accessible field net/minecraft/client/gui/screen/advancement/AdvancementWidget p
 
 accessible field net/minecraft/client/gui/screen/advancement/AdvancementTab originX D
 accessible field net/minecraft/client/gui/screen/advancement/AdvancementTab originY D
+accessible field net/minecraft/client/gui/screen/advancement/AdvancementTab initialized Z
+accessible field net/minecraft/client/gui/screen/advancement/AdvancementTab widgets Ljava/util/Map;
+
+accessible class net/minecraft/client/gui/screen/advancement/AdvancementTabType
+accessible field net/minecraft/client/gui/screen/advancement/AdvancementTabType width I
+accessible class net/minecraft/client/gui/screen/advancement/AdvancementTabType$Textures
+accessible method net/minecraft/client/gui/screen/advancement/AdvancementTabType$Textures first ()Lnet/minecraft/util/Identifier;
+accessible method net/minecraft/client/gui/screen/advancement/AdvancementTabType$Textures middle ()Lnet/minecraft/util/Identifier;
+accessible method net/minecraft/client/gui/screen/advancement/AdvancementTabType$Textures last ()Lnet/minecraft/util/Identifier;
 
 accessible field net/minecraft/client/gui/screen/advancement/AdvancementsScreen PAGE_OFFSET_X I
 accessible field net/minecraft/client/gui/screen/advancement/AdvancementsScreen PAGE_OFFSET_Y I
@@ -20,9 +29,22 @@ accessible method net/minecraft/advancement/AdvancementProgress countObtainedReq
 accessible field net/minecraft/client/network/ClientAdvancementManager advancementProgresses Ljava/util/Map;
 
 accessible method net/minecraft/client/gui/DrawContext drawTexturedQuad (Ljava/util/function/Function;Lnet/minecraft/util/Identifier;IIIIFFFFI)V
+accessible method net/minecraft/client/gui/DrawContext drawSpriteNineSliced (Ljava/util/function/Function;Lnet/minecraft/client/texture/Sprite;Lnet/minecraft/client/texture/Scaling$NineSlice;IIIII)V
 
 accessible field net/minecraft/client/gui/widget/EntryListWidget MENU_LIST_BACKGROUND_TEXTURE Lnet/minecraft/util/Identifier;
 accessible field net/minecraft/client/gui/widget/EntryListWidget INWORLD_MENU_LIST_BACKGROUND_TEXTURE Lnet/minecraft/util/Identifier;
 
 accessible field net/minecraft/item/ItemGroups ITEM_SEARCH_TAB_TEXTURE_ID Lnet/minecraft/util/Identifier;
+
 accessible method net/minecraft/advancement/AdvancementProgress isCriterionObtained (Ljava/lang/String;)Z
+
+
+accessible field net/minecraft/client/gui/screen/advancement/AdvancementTab rootWidget Lnet/minecraft/client/gui/screen/advancement/AdvancementWidget;
+accessible field net/minecraft/client/gui/screen/advancement/AdvancementTab minPanX I
+accessible field net/minecraft/client/gui/screen/advancement/AdvancementTab minPanY I
+accessible field net/minecraft/client/gui/screen/advancement/AdvancementTab maxPanX I
+accessible field net/minecraft/client/gui/screen/advancement/AdvancementTab maxPanY I
+accessible method net/minecraft/client/gui/screen/advancement/AdvancementTab addWidget (Lnet/minecraft/client/gui/screen/advancement/AdvancementWidget;Lnet/minecraft/advancement/AdvancementEntry;)V
+
+accessible field net/minecraft/client/gui/screen/advancement/AdvancementWidget parent Lnet/minecraft/client/gui/screen/advancement/AdvancementWidget;
+accessible field net/minecraft/client/gui/screen/advancement/AdvancementWidget children Ljava/util/List;
