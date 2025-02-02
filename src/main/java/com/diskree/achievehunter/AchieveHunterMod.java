@@ -2,6 +2,7 @@ package com.diskree.achievehunter;
 
 import com.diskree.achievehunter.injection.extension.AdvancementsScreenExtension;
 import com.diskree.achievehunter.util.HighlightType;
+import com.diskree.achievehunter.util.HumanReadableCriterionNameHelper;
 import com.diskree.achievehunter.util.SearchByType;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.BoolArgumentType;
@@ -13,10 +14,14 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.advancement.PlacedAdvancement;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.advancement.AdvancementsScreen;
 import net.minecraft.command.argument.IdentifierArgumentType;
+import net.minecraft.resource.ResourceManager;
+import net.minecraft.resource.ResourceType;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.NotNull;
 
@@ -78,6 +83,19 @@ public class AchieveHunterMod implements ClientModInitializer {
                     )
                 )
             )
+        );
+        ResourceManagerHelper.get(ResourceType.CLIENT_RESOURCES).registerReloadListener(
+            new SimpleSynchronousResourceReloadListener() {
+                @Override
+                public Identifier getFabricId() {
+                    return Identifier.of(BuildConfig.MOD_ID, "clear_human_readable_criterion_name_cache");
+                }
+
+                @Override
+                public void reload(ResourceManager manager) {
+                    HumanReadableCriterionNameHelper.clearCache();
+                }
+            }
         );
     }
 

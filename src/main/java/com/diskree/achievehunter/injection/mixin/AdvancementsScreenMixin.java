@@ -6,10 +6,7 @@ import com.diskree.achievehunter.gui.AdvancementCriteriaListWidget;
 import com.diskree.achievehunter.gui.AdvancementCriterion;
 import com.diskree.achievehunter.injection.extension.AdvancementWidgetExtension;
 import com.diskree.achievehunter.injection.extension.AdvancementsScreenExtension;
-import com.diskree.achievehunter.util.AdvancementsScreenState;
-import com.diskree.achievehunter.util.FullscreenAdvancementsWindow;
-import com.diskree.achievehunter.util.HighlightType;
-import com.diskree.achievehunter.util.SearchByType;
+import com.diskree.achievehunter.util.*;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.advancement.*;
@@ -31,9 +28,7 @@ import net.minecraft.item.ItemGroups;
 import net.minecraft.item.ItemStack;
 import net.minecraft.screen.ScreenTexts;
 import net.minecraft.text.Text;
-import net.minecraft.util.Colors;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.Util;
+import net.minecraft.util.*;
 import net.minecraft.util.math.MathHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -116,10 +111,13 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
     private AdvancementTab searchTab;
 
     @Unique
-    private final ArrayList<PlacedAdvancement> searchResults = new ArrayList<>();
+    private final List<PlacedAdvancement> searchResults = new ArrayList<>();
 
     @Unique
     private boolean isAdvancementsSearchActive;
+
+    @Unique
+    private boolean isCriteriaSearchActive;
 
     @Unique
     private int advancementsSearchResultsColumnsCount;
@@ -197,10 +195,16 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
     private List<PlacedAdvancement> advancementsWithProgress;
 
     @Unique
+    private final List<PlacedAdvancement> criteriaSearchResults = new ArrayList<>();
+
+    @Unique
     private final Map<PlacedAdvancement, AdvancementWidget> advancementWidgetsCache = new HashMap<>();
 
     @Unique
     private int currentAdvancementIndex = -1;
+
+    @Unique
+    private int currentCriteriaSearchResultIndex = -1;
 
     @Unique
     private TextFieldWidget criteriaSearchField;
@@ -242,46 +246,102 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
         super(title);
     }
 
+
+
     @Unique
-    private void setCurrentAdvancementIndex(int advancementIndex) {
-        List<PlacedAdvancement> advancementsList = getAdvancementsWithProgress();
-        if (currentAdvancementIndex == advancementIndex ||
-            advancementIndex < 0 ||
-            advancementIndex >= advancementsList.size()
-        ) {
-            return;
-        }
-        currentAdvancementIndex = advancementIndex;
-        AdvancementEntry advancementEntry = advancementsList.get(currentAdvancementIndex).getAdvancementEntry();
+    private @NotNull List<AdvancementCriterion> getCriteria(
+        @NotNull AdvancementEntry advancementEntry,
+        boolean filterByObtained
+    ) {
+        List<AdvancementCriterion> criteria = new ArrayList<>();
         AdvancementProgress progress = advancementHandler.advancementProgresses.get(advancementEntry);
-        List<AdvancementCriterion> unobtainedCriteria = new ArrayList<>();
-        List<AdvancementCriterion> obtainedCriteria = new ArrayList<>();
-        for (List<String> requirement : advancementEntry.value().requirements().requirements()) {
-            if (requirement.isEmpty()) {
+        for (List<String> criteriaNames : advancementEntry.value().requirements().requirements()) {
+            if (criteriaNames.isEmpty()) {
                 continue;
             }
             boolean isAnyObtained = false;
-            for (String criterionName : requirement) {
+            for (String criterionName : criteriaNames) {
                 if (progress.isCriterionObtained(criterionName)) {
                     isAnyObtained = true;
                     break;
                 }
             }
-            String preferredCriterionName = requirement.size() == 1
-                ? requirement.getFirst()
-                : Collections.min(requirement);
-            AdvancementCriterion criterion = new AdvancementCriterion(
-                Text.of(preferredCriterionName),
-                null
-            );
-            if (isAnyObtained) {
-                obtainedCriteria.add(criterion);
-            } else {
-                unobtainedCriteria.add(criterion);
+            if (filterByObtained == isAnyObtained) {
+                String criterionName = criteriaNames.size() == 1
+                    ? criteriaNames.getFirst()
+                    : Collections.min(criteriaNames);
+
+                String humanReadableCriterionName = HumanReadableCriterionNameHelper.getHumanReadableCriterionName(
+                    advancementEntry.id(),
+                    criterionName
+                );
+                criteria.add(new AdvancementCriterion(
+                    getCriterionNameText(humanReadableCriterionName),
+                    null
+                ));
             }
         }
-        unobtainedCriteriaListWidget.setCriteria(unobtainedCriteria);
-        obtainedCriteriaListWidget.setCriteria(obtainedCriteria);
+        if (isCriteriaSearchActive) {
+            String query = criteriaSearchField.getText().toLowerCase(Locale.ROOT);
+            if (!query.isEmpty()) {
+                criteria.sort((criterion, otherCriterion) -> {
+                    String rawCriterionName = criterion.name().getString().toLowerCase(Locale.ROOT);
+                    String otherRawCriterionName = otherCriterion.name().getString().toLowerCase(Locale.ROOT);
+                    int length = rawCriterionName.contains(query) ? 1 : 0;
+                    int otherLength = otherRawCriterionName.contains(query) ? 1 : 0;
+                    return Integer.compare(otherLength, length);
+                });
+            }
+        }
+        return criteria;
+    }
+
+    @Unique
+    private @NotNull Text getCriterionNameText(@NotNull String criterionName) {
+        String searchText = criteriaSearchField.getText();
+
+        int highlightStartIndex = isCriteriaSearchActive && !searchText.isEmpty()
+            ? criterionName.toLowerCase(Locale.ROOT).indexOf(searchText.toLowerCase(Locale.ROOT))
+            : -1;
+
+        if (highlightStartIndex != -1) {
+            int highlightEndIndex = highlightStartIndex + searchText.length();
+            return Text
+                .literal(criterionName.substring(0, highlightStartIndex))
+                .append(
+                    Text
+                        .literal(criterionName.substring(highlightStartIndex, highlightEndIndex))
+                        .formatted(Formatting.YELLOW)
+                        .formatted(Formatting.UNDERLINE)
+                )
+                .append(Text.literal(criterionName.substring(highlightEndIndex)));
+        }
+        return Text.literal(criterionName);
+    }
+
+    @Unique
+    private void setCurrentAdvancementIndex(int index) {
+        List<PlacedAdvancement> advancementsWithProgress = getAdvancementsWithProgress();
+        if (index < 0 || index >= advancementsWithProgress.size()) {
+            return;
+        }
+        currentAdvancementIndex = index;
+        AdvancementEntry advancementEntry = advancementsWithProgress.get(currentAdvancementIndex).getAdvancementEntry();
+        unobtainedCriteriaListWidget.setCriteria(getCriteria(advancementEntry, false));
+        obtainedCriteriaListWidget.setCriteria(getCriteria(advancementEntry, true));
+    }
+
+    @Unique
+    private void setCurrentCriteriaSearchResultIndex(int index) {
+        if (index < 0 || index >= criteriaSearchResults.size()) {
+            return;
+        }
+        currentCriteriaSearchResultIndex = index;
+        AdvancementEntry advancementEntry = criteriaSearchResults
+            .get(currentCriteriaSearchResultIndex)
+            .getAdvancementEntry();
+        unobtainedCriteriaListWidget.setCriteria(getCriteria(advancementEntry, false));
+        obtainedCriteriaListWidget.setCriteria(getCriteria(advancementEntry, true));
     }
 
     @Unique
@@ -384,10 +444,13 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
 
     @Unique
     private @Nullable AdvancementWidget getListAdvancementWidget(int index) {
-        if (advancementsWithProgress == null || index < 0 || index >= advancementsWithProgress.size()) {
+        List<PlacedAdvancement> advancements = isCriteriaSearchActive
+            ? criteriaSearchResults
+            : getAdvancementsWithProgress();
+        if (index < 0 || index >= advancements.size()) {
             return null;
         }
-        PlacedAdvancement placedAdvancement = advancementsWithProgress.get(index);
+        PlacedAdvancement placedAdvancement = advancements.get(index);
         if (placedAdvancement == null || selectedTab == null || client == null) {
             return null;
         }
@@ -395,16 +458,16 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
         if (display == null) {
             return null;
         }
-        AdvancementWidget widget = advancementWidgetsCache.computeIfAbsent(placedAdvancement, k ->
-            new AdvancementWidget(selectedTab, client, placedAdvancement, display)
-        );
-        if (!(widget instanceof AdvancementWidgetExtension advancementWidgetExtension)) {
-            return null;
-        }
-        advancementWidgetExtension.achievehunter$setForceMirrorTooltipHorizontally(false);
-        advancementWidgetExtension.achievehunter$setForceMirrorTooltipVertically(false);
-        widget.setProgress(advancementHandler.advancementProgresses.get(placedAdvancement.getAdvancementEntry()));
-        return widget;
+        return advancementWidgetsCache.computeIfAbsent(placedAdvancement, k -> {
+            AdvancementWidget widget = new AdvancementWidget(selectedTab, client, k, display);
+            //noinspection ConstantValue
+            if (widget instanceof AdvancementWidgetExtension advancementWidgetExtension) {
+                advancementWidgetExtension.achievehunter$setForceMirrorTooltipHorizontally(false);
+                advancementWidgetExtension.achievehunter$setForceMirrorTooltipVertically(false);
+            }
+            widget.setProgress(advancementHandler.advancementProgresses.get(k.getAdvancementEntry()));
+            return widget;
+        });
     }
 
     @SuppressWarnings("SameParameterValue")
@@ -468,11 +531,37 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
 
     @Unique
     private void searchCriteria() {
-        if (advancementsWithProgress == null || criteriaSearchField == null) {
-            return;
+        String query = criteriaSearchField.getText().toLowerCase(Locale.ROOT);
+        criteriaSearchResults.clear();
+        for (PlacedAdvancement advancement : getAdvancementsWithProgress()) {
+            AdvancementEntry advancementEntry = advancement.getAdvancementEntry();
+            boolean found = false;
+            for (AdvancementCriterion criterion : getCriteria(advancementEntry, false)) {
+                if (criterion.name().getString().toLowerCase(Locale.ROOT).contains(query)) {
+                    criteriaSearchResults.add(advancement);
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                continue;
+            }
+            for (AdvancementCriterion criterion : getCriteria(advancementEntry, true)) {
+                if (criterion.name().getString().toLowerCase(Locale.ROOT).contains(query)) {
+                    criteriaSearchResults.add(advancement);
+                    break;
+                }
+            }
         }
-        String query = criteriaSearchField.getText();
-
+        isCriteriaSearchActive = !query.isEmpty();
+        if (isCriteriaSearchActive && !criteriaSearchResults.isEmpty()) {
+            setCurrentCriteriaSearchResultIndex(0);
+            setCriteriaListsVisible(true);
+        } else {
+            currentCriteriaSearchResultIndex = -1;
+            setCriteriaListsVisible(false);
+            setCurrentAdvancementIndex(currentAdvancementIndex);
+        }
     }
 
     @Unique
@@ -589,6 +678,12 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
     }
 
     @Unique
+    private void setCriteriaListsVisible(boolean isVisible) {
+        unobtainedCriteriaListWidget.visible = isVisible;
+        obtainedCriteriaListWidget.visible = isVisible;
+    }
+
+    @Unique
     private void searchAdvancementsInternal(String query, SearchByType searchByType) {
         query = query.toLowerCase(Locale.ROOT);
         searchResults.clear();
@@ -614,20 +709,15 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
         }
         searchResults.sort(Comparator.comparing((advancement) -> advancement.getAdvancementEntry().id()));
 
-        List<AdvancementFrame> frameOrder = Arrays.asList(
-            AdvancementFrame.TASK,
-            AdvancementFrame.GOAL,
-            AdvancementFrame.CHALLENGE
-        );
-        searchResults.sort((advancement, nextAdvancement) -> {
+        searchResults.sort((advancement, otherAdvancement) -> {
             AdvancementDisplay display = advancement.getAdvancement().display().orElse(null);
-            AdvancementDisplay nextDisplay = nextAdvancement.getAdvancement().display().orElse(null);
-            if (display == null || nextDisplay == null) {
+            AdvancementDisplay otherDisplay = otherAdvancement.getAdvancement().display().orElse(null);
+            if (display == null || otherDisplay == null) {
                 return 0;
             }
-            int frameIndex = frameOrder.indexOf(display.getFrame());
-            int nextFrameIndex = frameOrder.indexOf(nextDisplay.getFrame());
-            return Integer.compare(frameIndex, nextFrameIndex);
+            int frameIndex = FRAME_TYPE_PRIORITY.indexOf(display.getFrame());
+            int otherFrameIndex = FRAME_TYPE_PRIORITY.indexOf(otherDisplay.getFrame());
+            return Integer.compare(frameIndex, otherFrameIndex);
         });
     }
 
@@ -842,6 +932,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                     screenState = AdvancementsScreenState.OPENING_INFO;
                     tooltipTransitionProgress = 0.0f;
                     criteriaSearchField.setFocused(true);
+                    setCriteriaListsVisible(true);
                 }
             }
             isFocusedAdvancementClicked = false;
@@ -947,6 +1038,10 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
 
     @Shadow
     protected abstract void refreshWidgetPositions();
+
+    @Shadow
+    @Nullable
+    public abstract AdvancementWidget getAdvancementWidget(PlacedAdvancement advancement);
 
     @Redirect(
         method = "drawWindow",
@@ -1186,10 +1281,8 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
             CRITERIA_LIST_WIDGET_WIDTH,
             criteriaListHeight,
             criteriaListY,
-            16,
             false
         );
-        unobtainedCriteriaListWidget.visible = false;
         addDrawableChild(unobtainedCriteriaListWidget);
 
         obtainedCriteriaListWidget = new AdvancementCriteriaListWidget(
@@ -1197,11 +1290,10 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
             CRITERIA_LIST_WIDGET_WIDTH,
             criteriaListHeight,
             criteriaListY,
-            16,
             true
         );
-        obtainedCriteriaListWidget.visible = false;
         addDrawableChild(obtainedCriteriaListWidget);
+        setCriteriaListsVisible(false);
 
         calculateWindowSizeAndPosition(width, height);
     }
@@ -1303,11 +1395,15 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
         CallbackInfoReturnable<Boolean> cir
     ) {
         if (screenState == AdvancementsScreenState.INFO_VISIBLE) {
-            if (horizontalAmount == 0 && 
-                verticalAmount != 0 && 
+            if (horizontalAmount == 0 &&
+                verticalAmount != 0 &&
                 mouseX < getCriteriaListX(false) - CRITERIA_LIST_MARGIN
             ) {
-                setCurrentAdvancementIndex(currentAdvancementIndex - (int) verticalAmount);
+                if (isCriteriaSearchActive) {
+                    setCurrentCriteriaSearchResultIndex(currentCriteriaSearchResultIndex - (int) verticalAmount);
+                } else {
+                    setCurrentAdvancementIndex(currentAdvancementIndex - (int) verticalAmount);
+                }
                 cir.setReturnValue(true);
                 return;
             }
@@ -1336,9 +1432,6 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
         if (client == null) {
             return;
         }
-        unobtainedCriteriaListWidget.visible = obtainedCriteriaListWidget.visible =
-            screenState != AdvancementsScreenState.WINDOW_VISIBLE;
-
         if (screenState == AdvancementsScreenState.OPENING_INFO) {
             tooltipTransitionProgress += (delta / 20.0f) / ANIMATION_DURATION_SECONDS;
             if (tooltipTransitionProgress >= 1.0f) {
@@ -1389,7 +1482,8 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
             }
         }
         if (screenState != AdvancementsScreenState.WINDOW_VISIBLE) {
-            AdvancementWidget centerWidget = getListAdvancementWidget(currentAdvancementIndex);
+            int advancementIndex = isCriteriaSearchActive ? currentCriteriaSearchResultIndex : currentAdvancementIndex;
+            AdvancementWidget centerWidget = getListAdvancementWidget(advancementIndex);
             if (centerWidget instanceof AdvancementWidgetExtension centerAdvancementWidgetExtension) {
                 int centerTooltipY = getCenterTooltipY(centerAdvancementWidgetExtension);
 
@@ -1418,8 +1512,13 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                 centerAdvancementWidgetExtension.achievehunter$setY(centerTooltipY);
                 centerAdvancementWidgetExtension.achievehunter$setCollapsed(false);
 
-                int prevDarkeningSectionBottom = centerTooltipY - listCenterExtraSpacing + Constants.ADVANCEMENT_FRAME_OVERHANG;
-                int nextDarkeningSectionTop = centerTooltipY + centerTooltipHeight + listCenterExtraSpacing + Constants.ADVANCEMENT_FRAME_OVERHANG;
+                int prevDarkeningSectionBottom = centerTooltipY
+                    - listCenterExtraSpacing
+                    + Constants.ADVANCEMENT_FRAME_OVERHANG;
+                int nextDarkeningSectionTop = centerTooltipY
+                    + centerTooltipHeight
+                    + listCenterExtraSpacing
+                    + Constants.ADVANCEMENT_FRAME_OVERHANG;
                 int darkeningHeight = centerTooltipHeight + listCenterExtraSpacing * 2;
                 renderDarkeningSection(
                     context,
@@ -1451,7 +1550,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                     centerWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
                 }
 
-                int nextIndex = currentAdvancementIndex;
+                int nextIndex = advancementIndex;
                 float nextTooltipTop = centerTooltipY + centerTooltipHeight + listSpacing + listCenterExtraSpacing;
                 while (nextTooltipTop <= height - PAGE_OFFSET_X) {
                     nextIndex++;
@@ -1472,7 +1571,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                     nextTooltipTop += nextTooltipHeight + listSpacing;
                 }
 
-                int prevIndex = currentAdvancementIndex;
+                int prevIndex = advancementIndex;
                 float prevTooltipBottom = centerTooltipY - listSpacing - listCenterExtraSpacing;
                 while (prevTooltipBottom >= PAGE_OFFSET_Y) {
                     prevIndex--;
@@ -1493,75 +1592,74 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                     prevWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
                     prevTooltipBottom -= prevTooltipHeight + listSpacing;
                 }
-
-                context.getMatrices().push();
-                context.getMatrices().translate(0, 0, 1000);
-                int shadowHeight = 6;
-                int windowTextureSize = 256;
-                int textureRegionLeft = PAGE_OFFSET_X + shadowHeight;
-                int textureRegionWidth = PAGE_WIDTH - textureRegionLeft;
-                int textureRegionHeaderHeight = PAGE_OFFSET_Y + shadowHeight;
-                int textureRegionHeaderTop = 0;
-                int textureRegionFooterHeight = PAGE_OFFSET_X + shadowHeight;
-                int textureRegionFooterTop = WINDOW_HEIGHT - textureRegionFooterHeight;
-                context.drawTexture(
-                    RenderLayer::getGuiTextured,
-                    WINDOW_TEXTURE,
-                    0,
-                    0,
-                    textureRegionLeft,
-                    textureRegionHeaderTop,
-                    width,
-                    textureRegionHeaderHeight,
-                    textureRegionWidth,
-                    textureRegionHeaderHeight,
-                    windowTextureSize,
-                    windowTextureSize
-                );
-
-                context.drawText(
-                    textRenderer,
-                    criteriaSearchField.getText().isEmpty() ? ADVANCEMENTS_TEXT : SEARCH_TITLE,
-                    6,
-                    6,
-                    4210752,
-                    false
-                );
-
-                int achievehunterFieldX = width - SEARCH_FIELD_WIDTH - 3;
-                int achievehunterFieldY = (PAGE_OFFSET_Y - SEARCH_FIELD_HEIGHT) / 2 + 1;
-                context.drawTexture(
-                    RenderLayer::getGuiTextured,
-                    ItemGroups.ITEM_SEARCH_TAB_TEXTURE_ID,
-                    achievehunterFieldX,
-                    achievehunterFieldY,
-                    80,
-                    4,
-                    SEARCH_FIELD_WIDTH,
-                    SEARCH_FIELD_HEIGHT,
-                    256,
-                    256
-                );
-                criteriaSearchField.setX(achievehunterFieldX + SEARCH_FIELD_TEXT_LEFT_OFFSET);
-                criteriaSearchField.setY(achievehunterFieldY + SEARCH_FIELD_TEXT_LEFT_OFFSET);
-                criteriaSearchField.render(context, mouseX, mouseY, delta);
-
-                context.drawTexture(
-                    RenderLayer::getGuiTextured,
-                    WINDOW_TEXTURE,
-                    0,
-                    height - PAGE_OFFSET_X - shadowHeight,
-                    textureRegionLeft,
-                    textureRegionFooterTop,
-                    width,
-                    textureRegionFooterHeight,
-                    textureRegionWidth,
-                    textureRegionFooterHeight,
-                    windowTextureSize,
-                    windowTextureSize
-                );
-                context.getMatrices().pop();
             }
+            context.getMatrices().push();
+            context.getMatrices().translate(0, 0, 1000);
+            int shadowHeight = 6;
+            int windowTextureSize = 256;
+            int textureRegionLeft = PAGE_OFFSET_X + shadowHeight;
+            int textureRegionWidth = PAGE_WIDTH - textureRegionLeft;
+            int textureRegionHeaderHeight = PAGE_OFFSET_Y + shadowHeight;
+            int textureRegionHeaderTop = 0;
+            int textureRegionFooterHeight = PAGE_OFFSET_X + shadowHeight;
+            int textureRegionFooterTop = WINDOW_HEIGHT - textureRegionFooterHeight;
+            context.drawTexture(
+                RenderLayer::getGuiTextured,
+                WINDOW_TEXTURE,
+                0,
+                0,
+                textureRegionLeft,
+                textureRegionHeaderTop,
+                width,
+                textureRegionHeaderHeight,
+                textureRegionWidth,
+                textureRegionHeaderHeight,
+                windowTextureSize,
+                windowTextureSize
+            );
+
+            context.drawText(
+                textRenderer,
+                criteriaSearchField.getText().isEmpty() ? ADVANCEMENTS_TEXT : SEARCH_TITLE,
+                6,
+                6,
+                4210752,
+                false
+            );
+
+            int achievehunterFieldX = width - SEARCH_FIELD_WIDTH - 3;
+            int achievehunterFieldY = (PAGE_OFFSET_Y - SEARCH_FIELD_HEIGHT) / 2 + 1;
+            context.drawTexture(
+                RenderLayer::getGuiTextured,
+                ItemGroups.ITEM_SEARCH_TAB_TEXTURE_ID,
+                achievehunterFieldX,
+                achievehunterFieldY,
+                80,
+                4,
+                SEARCH_FIELD_WIDTH,
+                SEARCH_FIELD_HEIGHT,
+                256,
+                256
+            );
+            criteriaSearchField.setX(achievehunterFieldX + SEARCH_FIELD_TEXT_LEFT_OFFSET);
+            criteriaSearchField.setY(achievehunterFieldY + SEARCH_FIELD_TEXT_LEFT_OFFSET);
+            criteriaSearchField.render(context, mouseX, mouseY, delta);
+
+            context.drawTexture(
+                RenderLayer::getGuiTextured,
+                WINDOW_TEXTURE,
+                0,
+                height - PAGE_OFFSET_X - shadowHeight,
+                textureRegionLeft,
+                textureRegionFooterTop,
+                width,
+                textureRegionFooterHeight,
+                textureRegionWidth,
+                textureRegionFooterHeight,
+                windowTextureSize,
+                windowTextureSize
+            );
+            context.getMatrices().pop();
             if (screenState == AdvancementsScreenState.OPENING_INFO &&
                 transitionAdvancementWidget instanceof AdvancementWidgetExtension advancementWidgetExtension
             ) {
@@ -1612,6 +1710,9 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
             screenState = AdvancementsScreenState.WINDOW_VISIBLE;
             criteriaSearchField.setText("");
             criteriaSearchField.setFocused(false);
+            currentCriteriaSearchResultIndex = -1;
+            isCriteriaSearchActive = false;
+            setCriteriaListsVisible(false);
             cir.setReturnValue(true);
             return;
         }
@@ -1907,6 +2008,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
         }
         if (criteriaSearchField != null && criteriaSearchField.mouseClicked(mouseX, mouseY, button)) {
             cir.setReturnValue(true);
+            isCriteriaSearchActive = !criteriaSearchField.getText().isEmpty();
             return;
         }
         isFocusedAdvancementClicked = focusedAdvancementWidget != null && button == GLFW.GLFW_MOUSE_BUTTON_LEFT;

@@ -23,10 +23,9 @@ public class AdvancementCriteriaListWidget extends EntryListWidget<AdvancementCr
         int width,
         int height,
         int topY,
-        int itemHeight,
         boolean isObtained
     ) {
-        super(client, width, height, topY, itemHeight, (int) (9.0f * 1.5f));
+        super(client, width, height, topY, 16, (int) (9.0f * 1.5f));
         this.isObtained = isObtained;
     }
 
@@ -93,12 +92,13 @@ public class AdvancementCriteriaListWidget extends EntryListWidget<AdvancementCr
             boolean hovered,
             float tickDelta
         ) {
-            context.drawTextWithShadow(
+            context.drawText(
                 client.textRenderer,
                 criterion.name(),
                 x,
                 y,
-                isObtained ? Colors.GRAY : Colors.WHITE
+                isObtained ? Colors.GRAY : Colors.WHITE,
+                false
             );
         }
     }
