@@ -1,13 +1,7 @@
 package com.diskree.achievehunter.injection.extension;
 
 public interface AdvancementWidgetExtension {
-    boolean achievehunter$isTooltipMirroredHorizontally();
-
-    boolean achievehunter$isTooltipMirroredVertically();
-
-    void achievehunter$setForceMirrorTooltipHorizontally(Boolean forceMirrorTooltipHorizontally);
-
-    void achievehunter$setForceMirrorTooltipVertically(Boolean forceMirrorTooltipVertically);
+    void achievehunter$disableMirroring();
 
     int achievehunter$getTooltipWidth();
 
@@ -16,10 +10,6 @@ public interface AdvancementWidgetExtension {
     void achievehunter$setX(int x);
 
     void achievehunter$setY(int y);
-
-    void achievehunter$setHorizontallySwapAnimationProgress(float horizontallySwapAnimationProgress);
-
-    void achievehunter$setVerticallySwapAnimationProgress(float verticallySwapAnimationProgress);
 
     void achievehunter$setCollapsed(boolean isCollapsed);
 }

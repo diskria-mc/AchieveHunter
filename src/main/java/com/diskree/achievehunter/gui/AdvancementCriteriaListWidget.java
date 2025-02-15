@@ -20,13 +20,17 @@ public class AdvancementCriteriaListWidget extends EntryListWidget<AdvancementCr
 
     public AdvancementCriteriaListWidget(
         MinecraftClient client,
-        int width,
-        int height,
-        int topY,
-        boolean isObtained
+        boolean isObtained,
+        int itemHeight,
+        int headerHeight
     ) {
-        super(client, width, height, topY, 16, (int) (9.0f * 1.5f));
+        super(client, 0, 0, 0, itemHeight, headerHeight);
         this.isObtained = isObtained;
+    }
+
+    @Override
+    protected int getContentsHeightWithPadding() {
+        return getEntryCount() * itemHeight + headerHeight;
     }
 
     @Override
