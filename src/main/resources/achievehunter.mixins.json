@@ -12,6 +12,7 @@
     "AdvancementWidgetMixin",
     "BookScreenMixin",
     "ChatScreenMixin",
+    "EntryListWidgetMixin",
     "ParentElementMixin",
     "ScreenMixin"
   ]

@@ -1,11 +1,14 @@
 package com.diskree.achievehunter.gui;
 
+import com.diskree.achievehunter.util.CriterionIcon;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.EntryListWidget;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.texture.Sprite;
 import net.minecraft.text.Text;
 import net.minecraft.util.Colors;
 import net.minecraft.util.Formatting;
@@ -26,11 +29,6 @@ public class AdvancementCriteriaListWidget extends EntryListWidget<AdvancementCr
     ) {
         super(client, 0, 0, 0, itemHeight, headerHeight);
         this.isObtained = isObtained;
-    }
-
-    @Override
-    protected int getContentsHeightWithPadding() {
-        return getEntryCount() * itemHeight + headerHeight;
     }
 
     @Override
@@ -61,9 +59,9 @@ public class AdvancementCriteriaListWidget extends EntryListWidget<AdvancementCr
         return getRight() - 6;
     }
 
-    public void setCriteria(@NotNull List<AdvancementCriterion> criteria) {
+    public void setCriteria(@NotNull List<AdvancementCriterionItem> criteria) {
         clearEntries();
-        for (AdvancementCriterion criterion : criteria) {
+        for (AdvancementCriterionItem criterion : criteria) {
             addEntry(new CriterionEntry(criterion));
         }
         setScrollY(0);
@@ -77,9 +75,9 @@ public class AdvancementCriteriaListWidget extends EntryListWidget<AdvancementCr
     @Environment(EnvType.CLIENT)
     public class CriterionEntry extends EntryListWidget.Entry<CriterionEntry> {
 
-        private final AdvancementCriterion criterion;
+        private final AdvancementCriterionItem criterion;
 
-        public CriterionEntry(AdvancementCriterion criterion) {
+        public CriterionEntry(AdvancementCriterionItem criterion) {
             this.criterion = criterion;
         }
 
@@ -96,14 +94,43 @@ public class AdvancementCriteriaListWidget extends EntryListWidget<AdvancementCr
             boolean hovered,
             float tickDelta
         ) {
+            CriterionIcon icon = criterion.icon();
+            if (icon.isItem()) {
+                int iconSize = 16;
+                int iconMargin = (entryHeight - iconSize) / 2;
+                context.drawItem(
+                    icon.stack(),
+                    x + iconMargin,
+                    y + iconMargin
+                );
+            } else if (icon.isSprite()) {
+                Sprite sprite = icon.sprite();
+                if (sprite != null) {
+                    int iconSize = Math.max(sprite.getContents().getWidth(), sprite.getContents().getHeight());
+                    int iconMargin = (entryHeight - iconSize) / 2;
+                    context.drawSpriteStretched(
+                        RenderLayer::getGuiTextured,
+                        sprite,
+                        x + iconMargin,
+                        y + iconMargin,
+                        iconSize,
+                        iconSize
+                    );
+                }
+            }
+
+            int textLeftMargin = icon == CriterionIcon.NO_ICON ? 2 : entryHeight + 4;
             context.drawText(
                 client.textRenderer,
-                criterion.name(),
-                x,
-                y,
+                criterion.displayedText(),
+                x + textLeftMargin,
+                y + 6,
                 isObtained ? Colors.GRAY : Colors.WHITE,
                 false
             );
+
+//            context.drawHorizontalLine(x, x + entryWidth, y, 0xffff0000);
+//            context.drawHorizontalLine(x, x + entryWidth, y + entryHeight - 1, 0xff00ff00);
         }
     }
 }

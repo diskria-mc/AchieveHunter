@@ -25,7 +25,9 @@ public class BookScreenMixin {
         Operation<Void> original,
         @Local @NotNull ClickEvent clickEvent
     ) {
-        if (!AchieveHunterMod.isModCommand(clickEvent.getValue())) {
+        if (clickEvent instanceof ClickEvent.RunCommand(String command) &&
+            !AchieveHunterMod.isModCommand(command)
+        ) {
             original.call(screen);
         }
     }

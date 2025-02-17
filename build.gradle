@@ -1,5 +1,7 @@
 plugins {
     id 'fabric-loom' version "${loomVersion}-SNAPSHOT"
+    id 'java'
+    id 'maven-publish'
 }
 
 def modId = project.modName.toLowerCase()
@@ -20,7 +22,7 @@ dependencies {
     minecraft "com.mojang:minecraft:${minMinecraftVersion}"
     mappings "net.fabricmc:yarn:${minMinecraftVersion}+build.${mappingsBuild}:v2"
     modImplementation "net.fabricmc:fabric-loader:${minLoaderVersion}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${apiVersion}+${minMinecraftVersion}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${apiVersion}"
 }
 
 processResources {
@@ -78,4 +80,18 @@ jar {
 
 loom {
     accessWidenerPath.set(file("src/main/resources/${modId}.accesswidener"))
+}
+
+publishing {
+    publications {
+        create('mavenJava', MavenPublication) {
+            from components.java
+            groupId = group
+            artifactId = modId
+            version = modVersion
+        }
+    }
+    repositories {
+        mavenLocal()
+    }
 }

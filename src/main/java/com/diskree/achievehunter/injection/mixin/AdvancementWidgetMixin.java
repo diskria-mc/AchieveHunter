@@ -163,7 +163,6 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
             }
             tooltipHeight = titleHeight + descriptionHeight;
             tooltipDescriptionHeight = descriptionHeight;
-            System.out.println(display.getTitle() + ": tooltipHeight = " + tooltipHeight + ", tooltipDescriptionHeight = " + tooltipDescriptionHeight);
 
             ci.cancel();
         }

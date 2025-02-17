@@ -1,8 +1,9 @@
 package com.diskree.achievehunter;
 
+import com.diskree.achievehunter.api.AddonsManager;
 import com.diskree.achievehunter.injection.extension.AdvancementsScreenExtension;
 import com.diskree.achievehunter.util.HighlightType;
-import com.diskree.achievehunter.util.HumanReadableCriterionNameHelper;
+import com.diskree.achievehunter.util.HumanReadableCriterionHelper;
 import com.diskree.achievehunter.util.SearchByType;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.BoolArgumentType;
@@ -47,8 +48,10 @@ public class AchieveHunterMod implements ClientModInitializer {
         return command.startsWith("/" + ADVANCEMENTS_SEARCH_MOD_ID + " ");
     }
 
+
     @Override
     public void onInitializeClient() {
+        AddonsManager.init();
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
             dispatcher.register(literal(ADVANCEMENTS_SEARCH_MOD_ID)
                 .then(literal("search")
@@ -93,7 +96,7 @@ public class AchieveHunterMod implements ClientModInitializer {
 
                 @Override
                 public void reload(ResourceManager manager) {
-                    HumanReadableCriterionNameHelper.clearCache();
+                    HumanReadableCriterionHelper.clearCache();
                 }
             }
         );
