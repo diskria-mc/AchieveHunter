@@ -1464,8 +1464,6 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
             int advancementIndex = isCriteriaSearchActive ? currentCriteriaSearchResultIndex : currentAdvancementIndex;
             AdvancementWidget centerWidget = getListAdvancementWidget(advancementIndex);
             if (centerWidget instanceof AdvancementWidgetExtension centerAdvancementWidgetExtension) {
-                int centerTooltipY = getCenterTooltipY(centerAdvancementWidgetExtension);
-
                 int criteriaSectionWidth = obtainedCriteriaListWidget.getWidth();
                 int criteriaSectionHeight = obtainedCriteriaListWidget.getHeight();
                 int criteriaSectionTop = obtainedCriteriaListWidget.getY();
@@ -1483,13 +1481,15 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                 int listSpacing = 10;
                 int listCenterExtraSpacing = 8;
 
+                centerAdvancementWidgetExtension.achievehunter$setCollapsed(false);
+
                 int centerTooltipWidth = centerAdvancementWidgetExtension.achievehunter$getTooltipWidth();
                 int centerTooltipHeight = centerAdvancementWidgetExtension.achievehunter$getTooltipHeight(true);
                 int centerTooltipX = listCenterX - centerTooltipWidth / 2;
+                int centerTooltipY = getCenterTooltipY(centerAdvancementWidgetExtension);
 
                 centerAdvancementWidgetExtension.achievehunter$setX(centerTooltipX);
                 centerAdvancementWidgetExtension.achievehunter$setY(centerTooltipY);
-                centerAdvancementWidgetExtension.achievehunter$setCollapsed(false);
 
                 int prevDarkeningSectionBottom = centerTooltipY
                     - listCenterExtraSpacing
