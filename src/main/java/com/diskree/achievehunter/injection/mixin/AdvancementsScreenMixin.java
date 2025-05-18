@@ -1291,7 +1291,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
             textRenderer,
             0,
             0,
-            SEARCH_FIELD_RECT.height - SEARCH_FIELD_TEXT_LEFT_OFFSET - 8,
+            SEARCH_FIELD_RECT.width - SEARCH_FIELD_TEXT_LEFT_OFFSET - 8,
             textRenderer.fontHeight,
             ScreenTexts.EMPTY
         );
