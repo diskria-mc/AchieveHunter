@@ -78,7 +78,7 @@ public class CriterionIconResolver {
                 }
             }
             case COLOR -> {
-                DyeColor dyeColor = DyeColor.byName(id.getPath(), null);
+                DyeColor dyeColor = DyeColor.byId(id.getPath(), null);
                 if (dyeColor != null) {
                     return CriterionIcon.ofItem(new ItemStack(DyeItem.byColor(dyeColor)));
                 }

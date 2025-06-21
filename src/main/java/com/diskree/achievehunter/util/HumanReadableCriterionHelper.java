@@ -28,7 +28,7 @@ public class HumanReadableCriterionHelper {
         @NotNull String realCriterionName
     ) {
         if (realCriterionName.trim().isEmpty()) {
-            return new Criterion(null, CriterionIcon.NO_ICON);
+            return new Criterion(null, null);
         }
 
         return CACHE.computeIfAbsent(
@@ -41,19 +41,21 @@ public class HumanReadableCriterionHelper {
         @NotNull Identifier advancementId,
         @NotNull String realCriterionName
     ) {
-        CriterionIcon addonCriterionIcon = AddonsManager.findCriterionIcon(advancementId, realCriterionName);
-        String addonTranslationKey = AddonsManager.findCriterionTranslation(advancementId, realCriterionName);
-        if (addonTranslationKey != null) {
-            return new Criterion(addonTranslationKey, addonCriterionIcon);
+        String translation = AddonsManager.findCriterionTranslation(advancementId, realCriterionName);
+        CriterionIcon icon = AddonsManager.findCriterionIcon(advancementId, realCriterionName);
+        if (translation != null && icon != null) {
+            return new Criterion(translation, icon);
         }
-        String resourcePackTranslation = Utils.getTranslationOrNull(
-            "advancement."
-                + advancementId.toString().replace(":", ".").replace("/", ".")
-                + "."
-                + realCriterionName.replace(":", ".").replace("/", ".")
-        );
-        if (resourcePackTranslation != null) {
-            return new Criterion(resourcePackTranslation, addonCriterionIcon);
+        if (translation == null) {
+            String resourcePackTranslation = Utils.getTranslationOrNull(
+                "advancement."
+                    + advancementId.toString().replace(":", ".").replace("/", ".")
+                    + "."
+                    + realCriterionName.replace(":", ".").replace("/", ".")
+            );
+            if (resourcePackTranslation != null) {
+                translation = resourcePackTranslation;
+            }
         }
 
         List<String> namespaces = new ArrayList<>();
@@ -72,25 +74,50 @@ public class HumanReadableCriterionHelper {
                 continue;
             }
 
-            for (CriterionType criterionType : CriterionType.values()) {
-                String criterionTranslation = Utils.getTranslationOrNull(
-                    CriterionLocaleKeyResolver.resolve(criterionType, id)
+            String autoDetectedTranslation = null;
+            CriterionType criterionType = null;
+            CriterionType forceCriterionType = AddonsManager.findForceCriterionType(advancementId, realCriterionName);
+            if (forceCriterionType != null) {
+                autoDetectedTranslation = Utils.getTranslationOrNull(
+                    CriterionLocaleKeyResolver.resolve(forceCriterionType, id)
                 );
-                if (criterionTranslation != null) {
-                    CriterionIcon icon = CriterionIconResolver.resolveIcon(criterionType, id);
-                    return new Criterion(criterionTranslation, icon != null ? icon : addonCriterionIcon);
+                criterionType = forceCriterionType;
+            } else {
+                for (CriterionType type : CriterionType.values()) {
+                    autoDetectedTranslation = Utils.getTranslationOrNull(
+                        CriterionLocaleKeyResolver.resolve(type, id)
+                    );
+                    if (autoDetectedTranslation != null) {
+                        criterionType = type;
+                        break;
+                    }
                 }
             }
+            if (autoDetectedTranslation != null) {
+                if (icon == null) {
+                    icon = CriterionIconResolver.resolveIcon(criterionType, id);
+                }
+                if (translation == null) {
+                    translation = autoDetectedTranslation;
+                }
+                break;
+            }
         }
-
-        realCriterionName = realCriterionName
-            .replace(":", " ")
-            .replace("/", " ")
-            .replace("_", " ")
-            .trim();
-        return new Criterion(
-            !realCriterionName.isEmpty() ? Utils.capitalizeFirst(realCriterionName) : null,
-            addonCriterionIcon
-        );
+        String criterionName;
+        if (translation != null) {
+            criterionName = translation;
+        } else {
+            criterionName = realCriterionName
+                .replace(":", " ")
+                .replace("/", " ")
+                .replace("_", " ")
+                .trim();
+            if (!criterionName.isEmpty()) {
+                criterionName = Utils.capitalizeFirst(criterionName);
+            } else {
+                criterionName = null;
+            }
+        }
+        return new Criterion(criterionName, icon);
     }
 }

@@ -41,7 +41,7 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
     private boolean isCollapsed;
 
     @Unique
-    private int tooltipHeight = Integer.MIN_VALUE;
+    private int tooltipTitleHeight = Integer.MIN_VALUE;
 
     @Unique
     private int tooltipDescriptionHeight = Integer.MIN_VALUE;
@@ -61,14 +61,14 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
 
     @Override
     public int achievehunter$getTooltipHeight(boolean withDescription) {
-        if (tooltipHeight == Integer.MIN_VALUE || tooltipDescriptionHeight == Integer.MIN_VALUE) {
+        if (tooltipTitleHeight == Integer.MIN_VALUE || tooltipDescriptionHeight == Integer.MIN_VALUE) {
             shouldCalculateTooltipHeightOnNextRender = true;
             drawTooltip(null, 0, 0, 1.0f, 0, 0);
             shouldCalculateTooltipHeightOnNextRender = false;
         }
-        int result = tooltipHeight;
-        if (!withDescription) {
-            result -= tooltipDescriptionHeight;
+        int result = tooltipTitleHeight;
+        if (withDescription) {
+            result += tooltipDescriptionHeight;
         }
         return result;
     }
@@ -86,7 +86,7 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
     @Override
     public void achievehunter$setCollapsed(boolean isCollapsed) {
         this.isCollapsed = isCollapsed;
-        tooltipHeight = tooltipDescriptionHeight = Integer.MIN_VALUE;
+        tooltipTitleHeight = tooltipDescriptionHeight = Integer.MIN_VALUE;
     }
 
     @Mutable
@@ -158,11 +158,14 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
     ) {
         if (shouldCalculateTooltipHeightOnNextRender) {
             titleHeight -= Constants.ADVANCEMENT_FRAME_OVERHANG * 2;
-            if (isCollapsed) {
-                descriptionHeight = 0;
+            if (titleHeight == 20) {
+                titleHeight += Constants.ADVANCEMENT_FRAME_OVERHANG;
+                if (isCollapsed) {
+                    titleHeight += Constants.ADVANCEMENT_FRAME_OVERHANG;
+                }
             }
-            tooltipHeight = titleHeight + descriptionHeight;
-            tooltipDescriptionHeight = descriptionHeight;
+            tooltipTitleHeight = titleHeight;
+            tooltipDescriptionHeight = isCollapsed ? 0 : descriptionHeight;
 
             ci.cancel();
         }

@@ -94,32 +94,36 @@ public class AdvancementCriteriaListWidget extends EntryListWidget<AdvancementCr
             boolean hovered,
             float tickDelta
         ) {
+            int textLeftMargin;
             CriterionIcon icon = criterion.icon();
-            if (icon.isItem()) {
-                int iconSize = 16;
-                int iconMargin = (entryHeight - iconSize) / 2;
-                context.drawItem(
-                    icon.stack(),
-                    x + iconMargin,
-                    y + iconMargin
-                );
-            } else if (icon.isSprite()) {
-                Sprite sprite = icon.sprite();
-                if (sprite != null) {
-                    int iconSize = Math.max(sprite.getContents().getWidth(), sprite.getContents().getHeight());
+            if (icon == null) {
+                textLeftMargin = 2;
+            } else {
+                textLeftMargin = entryHeight + 4;
+                if (icon.isItem()) {
+                    int iconSize = 16;
                     int iconMargin = (entryHeight - iconSize) / 2;
-                    context.drawSpriteStretched(
-                        RenderLayer::getGuiTextured,
-                        sprite,
+                    context.drawItem(
+                        icon.stack(),
                         x + iconMargin,
-                        y + iconMargin,
-                        iconSize,
-                        iconSize
+                        y + iconMargin
                     );
+                } else if (icon.isSprite()) {
+                    Sprite sprite = icon.sprite();
+                    if (sprite != null) {
+                        int iconSize = Math.max(sprite.getContents().getWidth(), sprite.getContents().getHeight());
+                        int iconMargin = (entryHeight - iconSize) / 2;
+                        context.drawSpriteStretched(
+                            RenderLayer::getGuiTextured,
+                            sprite,
+                            x + iconMargin,
+                            y + iconMargin,
+                            iconSize,
+                            iconSize
+                        );
+                    }
                 }
             }
-
-            int textLeftMargin = icon == CriterionIcon.NO_ICON ? 2 : entryHeight + 4;
             context.drawText(
                 client.textRenderer,
                 criterion.displayedText(),
@@ -128,9 +132,6 @@ public class AdvancementCriteriaListWidget extends EntryListWidget<AdvancementCr
                 isObtained ? Colors.GRAY : Colors.WHITE,
                 false
             );
-
-//            context.drawHorizontalLine(x, x + entryWidth, y, 0xffff0000);
-//            context.drawHorizontalLine(x, x + entryWidth, y + entryHeight - 1, 0xff00ff00);
         }
     }
 }

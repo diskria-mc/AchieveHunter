@@ -1,7 +1,6 @@
 package com.diskree.achievehunter.injection.mixin;
 
 import com.diskree.achievehunter.injection.extension.AdvancementsScreenExtension;
-import com.diskree.achievehunter.injection.extension.AdvancementsScreenExtension;
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;

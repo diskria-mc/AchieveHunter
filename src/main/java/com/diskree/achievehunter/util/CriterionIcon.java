@@ -7,8 +7,6 @@ import org.jetbrains.annotations.Nullable;
 
 public record CriterionIcon(@Nullable ItemStack stack, @Nullable Sprite sprite) {
 
-    public static final CriterionIcon NO_ICON = new CriterionIcon(null, null);
-
     public static @NotNull CriterionIcon ofItem(@NotNull ItemStack stack) {
         return new CriterionIcon(stack, null);
     }

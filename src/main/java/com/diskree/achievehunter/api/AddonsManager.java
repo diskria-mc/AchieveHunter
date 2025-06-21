@@ -2,9 +2,9 @@ package com.diskree.achievehunter.api;
 
 import com.diskree.achievehunter.BuildConfig;
 import com.diskree.achievehunter.util.CriterionIcon;
+import com.diskree.achievehunter.util.CriterionType;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.util.Identifier;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -28,13 +28,23 @@ public class AddonsManager {
         return null;
     }
 
-    public static @NotNull CriterionIcon findCriterionIcon(Identifier advancementId, String criterionName) {
+    public static @Nullable CriterionIcon findCriterionIcon(Identifier advancementId, String criterionName) {
         for (AchieveHunterApi addon : ADDONS) {
             CriterionIcon icon = addon.getCriterionIcon(advancementId, criterionName);
             if (icon != null) {
                 return icon;
             }
         }
-        return CriterionIcon.NO_ICON;
+        return null;
+    }
+
+    public static @Nullable CriterionType findForceCriterionType(Identifier advancementId, String criterionName) {
+        for (AchieveHunterApi addon : ADDONS) {
+            CriterionType type = addon.getForceCriterionType(advancementId, criterionName);
+            if (type != null) {
+                return type;
+            }
+        }
+        return null;
     }
 }

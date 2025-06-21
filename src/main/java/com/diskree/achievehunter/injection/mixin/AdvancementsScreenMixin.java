@@ -47,8 +47,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 import java.awt.*;
-import java.util.List;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -149,6 +149,12 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
 
     @Unique
     private boolean isFocusedAdvancementClicked;
+
+    @Unique
+    private int obtainedAdvancementsCount;
+
+    @Unique
+    private int totalAdvancementsCount;
 
     @Unique
     private static final List<AdvancementFrame> FRAME_TYPE_PRIORITY = Arrays.asList(
@@ -422,13 +428,23 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                 }
             }
             Map<AdvancementEntry, AdvancementProgress> progresses = advancementHandler.advancementProgresses;
+
+            obtainedAdvancementsCount = 0;
+            totalAdvancementsCount = 0;
+            for (PlacedAdvancement placedAdvancement : advancementsWithProgress) {
+                totalAdvancementsCount++;
+                if (progresses.get(placedAdvancement.getAdvancementEntry()).isDone()) {
+                    obtainedAdvancementsCount++;
+                }
+            }
+
             advancementsWithProgress.sort((advancement, otherAdvancement) -> {
                 AdvancementProgress progress = progresses.get(advancement.getAdvancementEntry());
                 AdvancementProgress otherProgress = progresses.get(otherAdvancement.getAdvancementEntry());
                 int totalRequirementsCount = progress.requirements.getLength();
                 int otherTotalRequirementsCount = otherProgress.requirements.getLength();
-                int obtainedAdvancementsCount = progress.countObtainedRequirements();
-                int otherObtainedAdvancementsCount = otherProgress.countObtainedRequirements();
+                int obtainedRequirementsCount = progress.countObtainedRequirements();
+                int otherObtainedRequirementsCount = otherProgress.countObtainedRequirements();
                 boolean isDone = progress.isDone();
                 boolean otherIsDone = otherProgress.isDone();
                 boolean isAnyObtained = progress.isAnyObtained();
@@ -438,8 +454,8 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
 
                 if (isStarted && otherIsStarted) {
                     int remainingRequirementsCountComparison = Integer.compare(
-                        totalRequirementsCount - obtainedAdvancementsCount,
-                        otherTotalRequirementsCount - otherObtainedAdvancementsCount
+                        totalRequirementsCount - obtainedRequirementsCount,
+                        otherTotalRequirementsCount - otherObtainedRequirementsCount
                     );
                     if (remainingRequirementsCountComparison != 0) {
                         return remainingRequirementsCountComparison;
@@ -632,15 +648,6 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
     }
 
     @Unique
-    private int getCenterTooltipY(@NotNull AdvancementWidgetExtension advancementWidgetExtension) {
-        int listHeight = height - PAGE_OFFSET_Y - PAGE_OFFSET_X;
-        int listCenterY = PAGE_OFFSET_Y + listHeight / 2;
-
-        int tooltipHeight = advancementWidgetExtension.achievehunter$getTooltipHeight(true);
-        return listCenterY - tooltipHeight / 2 - Constants.ADVANCEMENT_FRAME_OVERHANG;
-    }
-
-    @Unique
     private int getAdvancementsListWidth() {
         int minCriteriaWidth = MIN_CRITERIA_LIST_WIDGET_WIDTH * 2 + CRITERIA_LIST_MARGIN * 3;
         int criteriaWidth = Math.max(minCriteriaWidth, width - MIN_ADVANCEMENTS_LIST_WIDTH);
@@ -755,18 +762,17 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                 searchResults.add(placedAdvancement);
             }
         }
-        searchResults.sort(Comparator.comparing((advancement) -> advancement.getAdvancementEntry().id()));
-
-        searchResults.sort((advancement, otherAdvancement) -> {
-            AdvancementDisplay display = advancement.getAdvancement().display().orElse(null);
-            AdvancementDisplay otherDisplay = otherAdvancement.getAdvancement().display().orElse(null);
-            if (display == null || otherDisplay == null) {
-                return 0;
-            }
-            int frameIndex = FRAME_TYPE_PRIORITY.indexOf(display.getFrame());
-            int otherFrameIndex = FRAME_TYPE_PRIORITY.indexOf(otherDisplay.getFrame());
-            return Integer.compare(frameIndex, otherFrameIndex);
-        });
+        searchResults.sort(
+            Comparator
+                .comparing((PlacedAdvancement placedAdvancement) -> {
+                    AdvancementDisplay display = placedAdvancement.getAdvancement().display().orElse(null);
+                    if (display == null) {
+                        return Integer.MAX_VALUE;
+                    }
+                    return FRAME_TYPE_PRIORITY.indexOf(display.getFrame());
+                })
+                .thenComparing(advancement -> advancement.getAdvancementEntry().id())
+        );
     }
 
     @Unique
@@ -965,15 +971,18 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                             break;
                         }
                     }
-                } else if (shouldIncludeAdvancement(focusedPlacedAdvancement)) {
-                    List<PlacedAdvancement> advancementsWithProgress = getAdvancementsWithProgress();
-                    setCurrentAdvancementIndex(advancementsWithProgress.indexOf(focusedPlacedAdvancement));
-                    setSelectedAdvancement(focusedPlacedAdvancement.getAdvancementEntry());
-                    isCriteriaOpened = true;
-                    advancementsSearchField.setFocusUnlocked(true);
-                    advancementsSearchField.setFocused(false);
-                    criteriaSearchField.setFocusUnlocked(false);
-                    criteriaSearchField.setFocused(true);
+                } else {
+                    MinecraftClient.getInstance().keyboard.setClipboard("\"" + focusedPlacedAdvancement.getAdvancementEntry().id() + "\", # " + focusedPlacedAdvancement.getAdvancement().display().orElseThrow().getDescription().getString());
+                    if (shouldIncludeAdvancement(focusedPlacedAdvancement)) {
+                        List<PlacedAdvancement> advancementsWithProgress = getAdvancementsWithProgress();
+                        setCurrentAdvancementIndex(advancementsWithProgress.indexOf(focusedPlacedAdvancement));
+                        setSelectedAdvancement(focusedPlacedAdvancement.getAdvancementEntry());
+                        isCriteriaOpened = true;
+                        advancementsSearchField.setFocusUnlocked(true);
+                        advancementsSearchField.setFocused(false);
+                        criteriaSearchField.setFocusUnlocked(false);
+                        criteriaSearchField.setFocused(true);
+                    }
                 }
             }
             isFocusedAdvancementClicked = false;
@@ -1486,18 +1495,16 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                 int centerTooltipWidth = centerAdvancementWidgetExtension.achievehunter$getTooltipWidth();
                 int centerTooltipHeight = centerAdvancementWidgetExtension.achievehunter$getTooltipHeight(true);
                 int centerTooltipX = listCenterX - centerTooltipWidth / 2;
-                int centerTooltipY = getCenterTooltipY(centerAdvancementWidgetExtension);
+                int centerTooltipY = listCenterY - centerTooltipHeight / 2;
 
                 centerAdvancementWidgetExtension.achievehunter$setX(centerTooltipX);
                 centerAdvancementWidgetExtension.achievehunter$setY(centerTooltipY);
 
                 int prevDarkeningSectionBottom = centerTooltipY
-                    - listCenterExtraSpacing
-                    + Constants.ADVANCEMENT_FRAME_OVERHANG;
+                    - listCenterExtraSpacing;
                 int nextDarkeningSectionTop = centerTooltipY
                     + centerTooltipHeight
-                    + listCenterExtraSpacing
-                    + Constants.ADVANCEMENT_FRAME_OVERHANG;
+                    + listCenterExtraSpacing;
                 int darkeningHeight = centerTooltipHeight + listCenterExtraSpacing * 2;
                 renderDarkeningSection(
                     context,
@@ -1595,14 +1602,15 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                 windowTextureSize
             );
 
-            context.drawText(
-                textRenderer,
-                criteriaSearchField.getText().isEmpty() ? ADVANCEMENTS_TEXT : SEARCH_TITLE,
-                6,
-                6,
-                4210752,
-                false
-            );
+            Text title;
+            if (isCriteriaSearchActive) {
+                title = SEARCH_TITLE.copy()
+                    .append(" (" + criteriaSearchResults.size() + ")");
+            } else {
+                title = ADVANCEMENTS_TEXT.copy()
+                    .append(" (" + obtainedAdvancementsCount + "/" + totalAdvancementsCount + ")");
+            }
+            context.drawText(textRenderer, title, 6, 6, 4210752, false);
 
             int criteriaSearchFieldX = width - SEARCH_FIELD_RECT.width - 3;
             int criteriaSearchFieldY = (PAGE_OFFSET_Y - SEARCH_FIELD_RECT.height) / 2 + 1;
