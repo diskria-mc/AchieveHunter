@@ -10,6 +10,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.llamalad7.mixinextras.sugar.ref.LocalBooleanRef;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
 import net.minecraft.advancement.AdvancementDisplay;
 import net.minecraft.advancement.AdvancementFrame;
 import net.minecraft.advancement.PlacedAdvancement;
@@ -17,7 +18,6 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.advancement.AdvancementObtainedStatus;
 import net.minecraft.client.gui.screen.advancement.AdvancementTab;
 import net.minecraft.client.gui.screen.advancement.AdvancementWidget;
-import net.minecraft.client.render.RenderLayer;
 import net.minecraft.text.OrderedText;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.NotNull;
@@ -27,7 +27,6 @@ import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
-import java.util.function.Function;
 
 import static net.minecraft.client.gui.screen.advancement.AdvancementsScreen.PAGE_HEIGHT;
 
@@ -252,12 +251,12 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
         method = "renderWidgets",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/DrawContext;drawGuiTexture(Ljava/util/function/Function;Lnet/minecraft/util/Identifier;IIII)V"
+            target = "Lnet/minecraft/client/gui/DrawContext;drawGuiTexture(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/util/Identifier;IIII)V"
         )
     )
     private void highlightWidget(
         DrawContext context,
-        Function<Identifier, RenderLayer> renderLayers,
+        RenderPipeline pipeline,
         Identifier sprite,
         int x,
         int y,
@@ -275,7 +274,7 @@ public abstract class AdvancementWidgetMixin implements AdvancementWidgetExtensi
             ) {
                 return;
             }
-            original.call(context, renderLayers, sprite, x, y, width, height);
+            original.call(context, pipeline, sprite, x, y, width, height);
         }
     }
 

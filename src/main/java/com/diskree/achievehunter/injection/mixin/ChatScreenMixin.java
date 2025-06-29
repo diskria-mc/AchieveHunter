@@ -14,20 +14,20 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(ChatScreen.class)
 public class ChatScreenMixin {
 
-    @Shadow
-    protected TextFieldWidget chatField;
-
-    @WrapOperation(
-        method = "keyPressed",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/MinecraftClient;setScreen(Lnet/minecraft/client/gui/screen/Screen;)V",
-            ordinal = 1
-        )
-    )
-    private void cancelCloseScreen(MinecraftClient client, Screen screen, Operation<Void> original) {
-        if (!AchieveHunterMod.isModCommand(chatField.getText())) {
-            original.call(client, screen);
-        }
-    }
+//    @Shadow
+//    protected TextFieldWidget chatField;
+//
+//    @WrapOperation(
+//        method = "keyPressed",
+//        at = @At(
+//            value = "INVOKE",
+//            target = "Lnet/minecraft/client/MinecraftClient;setScreen(Lnet/minecraft/client/gui/screen/Screen;)V",
+//            ordinal = 1
+//        )
+//    )
+//    private void cancelCloseScreen(MinecraftClient client, Screen screen, Operation<Void> original) {
+//        if (!AchieveHunterMod.isModCommand(chatField.getText())) {
+//            original.call(client, screen);
+//        }
+//    }
 }

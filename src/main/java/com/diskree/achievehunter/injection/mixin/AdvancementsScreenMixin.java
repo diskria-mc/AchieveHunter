@@ -9,9 +9,11 @@ import com.diskree.achievehunter.injection.extension.AdvancementsScreenExtension
 import com.diskree.achievehunter.util.*;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
 import net.minecraft.advancement.*;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.advancement.AdvancementTab;
@@ -23,7 +25,6 @@ import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.client.gui.widget.ThreePartsLayoutWidget;
 import net.minecraft.client.gui.widget.Widget;
 import net.minecraft.client.network.ClientAdvancementManager;
-import net.minecraft.client.render.RenderLayer;
 import net.minecraft.item.ItemGroups;
 import net.minecraft.item.ItemStack;
 import net.minecraft.screen.ScreenTexts;
@@ -51,7 +52,6 @@ import java.util.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import static net.minecraft.client.gui.screen.advancement.AdvancementsScreen.*;
 import static net.minecraft.client.gui.widget.EntryListWidget.INWORLD_MENU_LIST_BACKGROUND_TEXTURE;
@@ -572,7 +572,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
             footerTexture = INWORLD_FOOTER_SEPARATOR_TEXTURE;
         }
         context.drawTexture(
-            RenderLayer::getGuiTextured,
+            RenderPipelines.GUI_TEXTURED,
             headerTexture,
             x,
             y,
@@ -584,7 +584,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
             lineHeight
         );
         context.drawTexture(
-            RenderLayer::getGuiTextured,
+            RenderPipelines.GUI_TEXTURED,
             backgroundTexture,
             x,
             y + lineHeight,
@@ -596,7 +596,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
             lineWidth
         );
         context.drawTexture(
-            RenderLayer::getGuiTextured,
+            RenderPipelines.GUI_TEXTURED,
             footerTexture,
             x,
             y + height - lineHeight,
@@ -1097,13 +1097,13 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
         method = "drawWindow",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/DrawContext;drawTexture(Ljava/util/function/Function;Lnet/minecraft/util/Identifier;IIFFIIII)V",
+            target = "Lnet/minecraft/client/gui/DrawContext;drawTexture(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/util/Identifier;IIFFIIII)V",
             ordinal = 0
         )
     )
     public void drawFullscreenWindow(
         DrawContext context,
-        Function<Identifier, RenderLayer> renderLayers,
+        RenderPipeline pipeline,
         Identifier sprite,
         int x,
         int y,
@@ -1116,7 +1116,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
     ) {
         fullscreenAdvancementsWindow.draw(
             context,
-            renderLayers,
+            pipeline,
             windowHorizontalMargin,
             windowVerticalMargin,
             windowWidth,
@@ -1477,8 +1477,8 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                 int criteriaSectionHeight = obtainedCriteriaListWidget.getHeight();
                 int criteriaSectionTop = obtainedCriteriaListWidget.getY();
 
-                context.getMatrices().push();
-                context.getMatrices().translate(0, 0, 0);
+                context.getMatrices().pushMatrix();
+                context.getMatrices().translate(0, 0);
 
                 int listWidth = getAdvancementsListWidth();
                 listWidth--;
@@ -1531,7 +1531,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                 context.drawVerticalLine(listWidth + 1, nextDarkeningSectionTop, height, grayLineColor);
                 context.drawHorizontalLine(listWidth, listWidth + 1, nextDarkeningSectionTop, grayLineColor);
 
-                context.getMatrices().pop();
+                context.getMatrices().popMatrix();
                 centerWidget.drawTooltip(context, 0, 0, 1.0f, 0, 0);
 
                 int nextIndex = advancementIndex;
@@ -1577,8 +1577,6 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                     prevTooltipBottom -= prevTooltipHeight + listSpacing;
                 }
             }
-            context.getMatrices().push();
-            context.getMatrices().translate(0, 0, 1000);
             int shadowHeight = 6;
             int windowTextureSize = 256;
             int textureRegionLeft = PAGE_OFFSET_X + shadowHeight;
@@ -1588,7 +1586,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
             int textureRegionFooterHeight = PAGE_OFFSET_X + shadowHeight;
             int textureRegionFooterTop = WINDOW_HEIGHT - textureRegionFooterHeight;
             context.drawTexture(
-                RenderLayer::getGuiTextured,
+                RenderPipelines.GUI_TEXTURED,
                 WINDOW_TEXTURE,
                 0,
                 0,
@@ -1615,7 +1613,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
             int criteriaSearchFieldX = width - SEARCH_FIELD_RECT.width - 3;
             int criteriaSearchFieldY = (PAGE_OFFSET_Y - SEARCH_FIELD_RECT.height) / 2 + 1;
             context.drawTexture(
-                RenderLayer::getGuiTextured,
+                RenderPipelines.GUI_TEXTURED,
                 ItemGroups.ITEM_SEARCH_TAB_TEXTURE_ID,
                 criteriaSearchFieldX,
                 criteriaSearchFieldY,
@@ -1631,7 +1629,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
             criteriaSearchField.render(context, mouseX, mouseY, delta);
 
             context.drawTexture(
-                RenderLayer::getGuiTextured,
+                RenderPipelines.GUI_TEXTURED,
                 WINDOW_TEXTURE,
                 0,
                 height - PAGE_OFFSET_X - shadowHeight,
@@ -1644,7 +1642,6 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
                 windowTextureSize,
                 windowTextureSize
             );
-            context.getMatrices().pop();
             ci.cancel();
         }
     }
@@ -1699,7 +1696,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
         method = "drawAdvancementTree",
         at = @At("TAIL")
     )
-    private void startHighlight(DrawContext context, int mouseX, int mouseY, int x, int y, CallbackInfo ci) {
+    private void startHighlight(DrawContext context, int x, int y, CallbackInfo ci) {
         if (highlightedAdvancement == null || selectedTab == null) {
             return;
         }
@@ -1765,10 +1762,10 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
         method = "drawWindow",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/DrawContext;drawText(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/text/Text;IIIZ)I"
+            target = "Lnet/minecraft/client/gui/DrawContext;drawText(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/text/Text;IIIZ)V"
         )
     )
-    private int modifyWindowTitleRender(
+    private void modifyWindowTitleRender(
         DrawContext context,
         TextRenderer textRenderer,
         Text text,
@@ -1800,7 +1797,6 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
         } else {
             context.drawText(textRenderer, text, x, y, color, shadow);
         }
-        return 0;
     }
 
     @Redirect(
@@ -1852,21 +1848,13 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
         method = "render",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/screen/advancement/AdvancementsScreen;drawAdvancementTree(Lnet/minecraft/client/gui/DrawContext;IIII)V"
+            target = "Lnet/minecraft/client/gui/screen/advancement/AdvancementsScreen;drawAdvancementTree(Lnet/minecraft/client/gui/DrawContext;II)V"
         )
     )
-    public void getWindowSizes(
-        AdvancementsScreen screen,
-        DrawContext context,
-        int mouseX,
-        int mouseY,
-        int x,
-        int y,
-        @NotNull Operation<Void> original
-    ) {
+    public void getWindowSizes(AdvancementsScreen screen, DrawContext context, int x, int y, Operation<Void> original) {
         windowX = x;
         windowY = y;
-        original.call(screen, context, mouseX, mouseY, x, y);
+        original.call(screen, context, x, y);
     }
 
     @Inject(
@@ -1905,7 +1893,7 @@ public abstract class AdvancementsScreenMixin extends Screen implements Advancem
             int fieldY = windowY + 4;
 
             context.drawTexture(
-                RenderLayer::getGuiTextured,
+                RenderPipelines.GUI_TEXTURED,
                 ItemGroups.ITEM_SEARCH_TAB_TEXTURE_ID,
                 fieldX,
                 fieldY,

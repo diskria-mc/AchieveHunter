@@ -4,14 +4,14 @@ import com.diskree.achievehunter.util.CriterionIcon;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.EntryListWidget;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.texture.Sprite;
 import net.minecraft.text.Text;
 import net.minecraft.util.Colors;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -109,12 +109,12 @@ public class AdvancementCriteriaListWidget extends EntryListWidget<AdvancementCr
                         y + iconMargin
                     );
                 } else if (icon.isSprite()) {
-                    Sprite sprite = icon.sprite();
+                    Identifier sprite = icon.sprite();
                     if (sprite != null) {
-                        int iconSize = Math.max(sprite.getContents().getWidth(), sprite.getContents().getHeight());
+                        int iconSize = 18;
                         int iconMargin = (entryHeight - iconSize) / 2;
-                        context.drawSpriteStretched(
-                            RenderLayer::getGuiTextured,
+                        context.drawGuiTexture(
+                            RenderPipelines.GUI_TEXTURED,
                             sprite,
                             x + iconMargin,
                             y + iconMargin,

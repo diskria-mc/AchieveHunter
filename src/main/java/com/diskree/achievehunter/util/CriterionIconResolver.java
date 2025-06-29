@@ -2,6 +2,7 @@ package com.diskree.achievehunter.util;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.hud.InGameHud;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.enchantment.Enchantment;
@@ -69,11 +70,7 @@ public class CriterionIconResolver {
                 if (effect != null) {
                     RegistryEntry<StatusEffect> registry = Registries.STATUS_EFFECT.getEntry(effect);
                     if (registry != null) {
-                        return CriterionIcon.ofSprite(
-                            MinecraftClient.getInstance()
-                                .getStatusEffectSpriteManager()
-                                .getSprite(registry)
-                        );
+                        return CriterionIcon.ofSprite(InGameHud.getEffectTexture(registry));
                     }
                 }
             }

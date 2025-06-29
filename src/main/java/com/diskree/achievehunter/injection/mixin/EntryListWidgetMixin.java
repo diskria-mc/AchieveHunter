@@ -14,7 +14,6 @@ public class EntryListWidgetMixin {
         method = {
             "getEntryAtPosition",
             "getContentsHeightWithPadding",
-//            "renderWidget",
             "ensureVisible",
             "renderList",
             "getRowTop",

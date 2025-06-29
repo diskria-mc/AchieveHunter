@@ -13,22 +13,22 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(BookScreen.class)
 public class BookScreenMixin {
 
-    @WrapOperation(
-        method = "handleTextClick",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/screen/ingame/BookScreen;closeScreen()V"
-        )
-    )
-    private void cancelCloseScreen(
-        BookScreen screen,
-        Operation<Void> original,
-        @Local @NotNull ClickEvent clickEvent
-    ) {
-        if (clickEvent instanceof ClickEvent.RunCommand(String command) &&
-            !AchieveHunterMod.isModCommand(command)
-        ) {
-            original.call(screen);
-        }
-    }
+//    @WrapOperation(
+//        method = "handleTextClick",
+//        at = @At(
+//            value = "INVOKE",
+//            target = "Lnet/minecraft/client/gui/screen/ingame/BookScreen;closeScreen()V"
+//        )
+//    )
+//    private void cancelCloseScreen(
+//        BookScreen screen,
+//        Operation<Void> original,
+//        @Local @NotNull ClickEvent clickEvent
+//    ) {
+//        if (clickEvent instanceof ClickEvent.RunCommand(String command) &&
+//            !AchieveHunterMod.isModCommand(command)
+//        ) {
+//            original.call(screen);
+//        }
+//    }
 }
