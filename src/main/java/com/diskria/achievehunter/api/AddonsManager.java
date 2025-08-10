@@ -1,0 +1,50 @@
+package com.diskria.achievehunter.api;
+
+import com.diskria.achievehunter.BuildConfig;
+import com.diskria.achievehunter.util.CriterionIcon;
+import com.diskria.achievehunter.util.CriterionType;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.util.Identifier;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class AddonsManager {
+
+    private static final List<AchieveHunterApi> ADDONS = new ArrayList<>();
+
+    public static void init() {
+        ADDONS.addAll(FabricLoader.getInstance().getEntrypoints(BuildConfig.MOD_ID, AchieveHunterApi.class));
+    }
+
+    public static @Nullable String findCriterionTranslation(Identifier advancementId, String criterionName) {
+        for (AchieveHunterApi addon : ADDONS) {
+            String key = addon.getCriterionTranslation(advancementId, criterionName);
+            if (key != null) {
+                return key;
+            }
+        }
+        return null;
+    }
+
+    public static @Nullable CriterionIcon findCriterionIcon(Identifier advancementId, String criterionName) {
+        for (AchieveHunterApi addon : ADDONS) {
+            CriterionIcon icon = addon.getCriterionIcon(advancementId, criterionName);
+            if (icon != null) {
+                return icon;
+            }
+        }
+        return null;
+    }
+
+    public static @Nullable CriterionType findForceCriterionType(Identifier advancementId, String criterionName) {
+        for (AchieveHunterApi addon : ADDONS) {
+            CriterionType type = addon.getForceCriterionType(advancementId, criterionName);
+            if (type != null) {
+                return type;
+            }
+        }
+        return null;
+    }
+}
